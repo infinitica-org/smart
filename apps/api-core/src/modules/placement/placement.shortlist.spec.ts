@@ -12,6 +12,7 @@ import { SMART_TOPICS } from '@smart/contracts';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
+import { ApplicationService } from '../applications/application.service.js';
 import { PlacementService } from './placement.service.js';
 import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
@@ -80,6 +81,7 @@ function setup(
 
   const prisma = {
     jobOpening: {
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ companyId: null, institutionId }),
       findFirst: vi.fn(({ where }: { where: Record<string, unknown> }) =>
         Promise.resolve(
           opening && opening.id === where.id && opening.institutionId === where.institutionId
@@ -121,16 +123,26 @@ function setup(
       }),
     },
     applicationStageEvent: { create: vi.fn().mockResolvedValue({}) },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const employers = { requireEmployer: vi.fn() };
   const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const applications = new ApplicationService(
+    prisma as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    outbox as never,
+  );
   const service = new PlacementService(
     prisma as never,
     outbox as never,
     employers as never,
     jdParseQueue as never,
+    undefined,
+    applications,
   );
   return {
     prisma,
@@ -235,7 +247,18 @@ describe('AC-T05 create application', () => {
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.applicationStageEvent.create).toHaveBeenCalledWith({
-      data: { applicationId, fromStage: null, toStage: 'SHORTLISTED' },
+      data: {
+        applicationId,
+        orgId: institutionId,
+        fromStage: null,
+        toStage: 'SHORTLISTED',
+        fromStatus: null,
+        toStatus: 'REVIEWING',
+        actorId: null,
+        actorType: 'SYSTEM',
+        note: null,
+        source: 'shortlist',
+      },
     });
   });
 
@@ -396,7 +419,7 @@ describe('AC-T05 SE-T07 handoff', () => {
       topic: SMART_TOPICS.applicationStageChanged,
       partitionKey: applicationId,
       eventType: SMART_TOPICS.applicationStageChanged,
-      source: 'placement',
+      source: 'applications',
       data: {
         applicationId,
         openingId,

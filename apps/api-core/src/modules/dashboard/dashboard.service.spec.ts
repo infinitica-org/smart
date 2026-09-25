@@ -211,6 +211,15 @@ describe('DashboardService (STU-03)', () => {
       expect(JSON.stringify(where.AND)).toContain('"applications":{"none":{"studentId"');
     });
 
+    it('excludes jobs the student hid and openings from unverified companies (JOB-02)', async () => {
+      await service.getOpportunities(studentId);
+
+      const and = JSON.stringify(prisma.jobOpening.findMany.mock.calls[0][0].where.AND);
+      expect(and).toContain(`"hiddenBy":{"none":{"studentId":"${studentId}"}}`);
+      expect(and).toContain('"verificationStatus":"APPROVED"');
+      expect(and).toContain('"companyId":null');
+    });
+
     it('drops openings the student is not eligible for and caps the list while keeping the total', async () => {
       const row = (over: Record<string, unknown>) => ({
         id: randomUUID(),

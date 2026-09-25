@@ -25,6 +25,8 @@ import type {
   InviteEmailData,
   PasswordResetEmailData,
   OpportunityEmailData,
+  ApplicationSubmittedEmailData,
+  EmployerApplicantEmailData,
   StageChangeEmailData,
   VerificationEmailData,
   WorkExperienceVerifierInviteEmailData,
@@ -88,6 +90,12 @@ export function renderEmailTemplate(
       return buildPasswordReset(data as PasswordResetEmailData);
     case 'opportunity-shortlisted':
       return buildOpportunityShortlisted(data as OpportunityEmailData);
+    case 'application-submitted':
+      return buildApplicationSubmitted(data as ApplicationSubmittedEmailData);
+    case 'application-received':
+      return buildEmployerApplicant(data as EmployerApplicantEmailData, 'received');
+    case 'application-withdrawn':
+      return buildEmployerApplicant(data as EmployerApplicantEmailData, 'withdrawn');
     case 'application-stage-changed':
       return buildStageChanged(data as StageChangeEmailData);
     case 'verification-passed':
@@ -476,6 +484,84 @@ function buildOpportunityShortlisted(payload: OpportunityEmailData): RenderedEma
       cta: { label: 'View my applications', url: payload.applicationsUrl },
       badge: { label: 'Shortlisted', tone: 'info' },
       signoff: SIGNOFF_STUDY_BUDDY,
+    }),
+  };
+}
+
+/* ---------------- APP-01: application submitted / received / withdrawn ---------------- */
+
+function buildApplicationSubmitted(payload: ApplicationSubmittedEmailData): RenderedEmail {
+  const name = firstName(payload.fullName);
+  const subject = `Application submitted: ${payload.roleTitle}`;
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(
+      `Your application for ${strong(payload.roleTitle)} at ${payload.companyName} is in. They will review the verified profile you chose to share, and you will hear from us as the status changes.`,
+    ),
+    detailRows([
+      ['Company', payload.companyName],
+      ['Role', payload.roleTitle],
+      ['Reference', payload.referenceNumber],
+    ]),
+  ].join('');
+  const text = [
+    `Hi ${name}, your application for ${payload.roleTitle} at ${payload.companyName} was submitted (reference ${payload.referenceNumber}).`,
+    `Track it here: ${payload.applicationsUrl}`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Your application is submitted',
+      illustration: SHORTLISTED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'View my applications', url: payload.applicationsUrl },
+      badge: { label: 'Submitted', tone: 'info' },
+      signoff: SIGNOFF_STUDY_BUDDY,
+    }),
+  };
+}
+
+function buildEmployerApplicant(
+  payload: EmployerApplicantEmailData,
+  kind: 'received' | 'withdrawn',
+): RenderedEmail {
+  const name = firstName(payload.recipientName);
+  const subject =
+    kind === 'received'
+      ? `New applicant for ${payload.roleTitle}`
+      : `Applicant withdrew from ${payload.roleTitle}`;
+  const line =
+    kind === 'received'
+      ? `${strong(payload.candidateName)} applied for ${strong(payload.roleTitle)}.`
+      : `${strong(payload.candidateName)} withdrew their application for ${strong(payload.roleTitle)}.`;
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(line),
+    detailRows([
+      ['Role', payload.roleTitle],
+      ['Applicant', payload.candidateName],
+    ]),
+  ].join('');
+  const text = [
+    `Hi ${name}, ${payload.candidateName} ${kind === 'received' ? 'applied for' : 'withdrew from'} ${payload.roleTitle}.`,
+    `View applicants: ${payload.applicantsUrl}`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: kind === 'received' ? 'You have a new applicant' : 'An applicant withdrew',
+      illustration: SHORTLISTED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'View applicants', url: payload.applicantsUrl },
+      badge: {
+        label: kind === 'received' ? 'New applicant' : 'Withdrawn',
+        tone: kind === 'received' ? 'info' : 'warning',
+      },
+      signoff: SIGNOFF_TEAM,
     }),
   };
 }

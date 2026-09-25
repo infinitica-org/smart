@@ -15,7 +15,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="border-b border-[var(--surface-border)] bg-[var(--surface)]">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
             <div>
-              <SmartLogo kind="wordmark" className="h-7" />
+              <div className="flex items-center gap-2.5">
+                <SmartLogo kind="mark" className="h-7 w-7 shrink-0" />
+              </div>
               <h1 className="mt-2 text-xl font-semibold tracking-tight">Trust & Verification</h1>
             </div>
             <div className="text-xs text-[var(--text-muted)] font-medium">Public Lookup Portal</div>

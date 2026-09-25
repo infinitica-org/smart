@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { cn } from '@smart/ui';
-import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
+import { cn, useUnreadMessageCount } from '@smart/ui';
+
+import smartLogoImg from '@smart/ui/assets/images/Logos/WebP/Smart-logo.png';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader } from '@smart/ui/sidebar';
 import { companyNavItems } from '@/navigation/sidebar-items';
 export interface CompanySidebarProps {
@@ -15,6 +16,7 @@ export interface CompanySidebarProps {
 
 export function CompanySidebar({ className }: CompanySidebarProps = {}) {
   const pathname = usePathname();
+  const unreadMessages = useUnreadMessageCount();
 
   return (
     <Sidebar
@@ -30,12 +32,12 @@ export function CompanySidebar({ className }: CompanySidebarProps = {}) {
           aria-label="SMART home"
         >
           <Image
-            src={textLogo}
-            alt="SMART"
-            width={110}
-            height={30}
+            src={smartLogoImg}
+            alt="SMART logo"
+            width={28}
+            height={28}
             priority
-            className="h-7 w-auto object-contain"
+            className="h-6 w-6 shrink-0 object-contain"
           />
           <span className="rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-700 group-data-[collapsible=icon]:hidden">
             Company
@@ -77,6 +79,14 @@ export function CompanySidebar({ className }: CompanySidebarProps = {}) {
                     <span className="truncate group-data-[collapsible=icon]:hidden">
                       {item.title}
                     </span>
+                    {item.url === '/messages' && unreadMessages > 0 ? (
+                      <span
+                        aria-label={`${unreadMessages} unread messages`}
+                        className="ml-auto rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden"
+                      >
+                        {unreadMessages > 99 ? '99+' : unreadMessages}
+                      </span>
+                    ) : null}
                     {item.badge ? (
                       <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 group-data-[collapsible=icon]:hidden">
                         {item.badge}

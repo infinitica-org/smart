@@ -277,16 +277,22 @@ export function WorkExperienceSection() {
       setError(fileError);
       return;
     }
+    const addedType = modalNewDocType;
     setModalPendingDocs((current) => [
       ...current,
       {
         localId: `${Date.now()}-${Math.random()}`,
-        documentType: modalNewDocType,
+        documentType: addedType,
         file: modalNewProofFile,
       },
     ]);
     setModalNewProofFile(null);
     setError(null);
+    if (addedType === 'OFFER_LETTER') {
+      setModalNewDocType('RELIEVING_LETTER');
+    } else if (addedType === 'RELIEVING_LETTER' || addedType === 'EXPERIENCE_LETTER') {
+      setModalNewDocType('OFFER_LETTER');
+    }
   };
 
   const handleSendVerification = async (experienceId: string, status?: string) => {
@@ -352,9 +358,25 @@ export function WorkExperienceSection() {
         ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
         : [];
       const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
+
+      const allPendingDocs = [...modalPendingDocs];
+      if (modalNewProofFile) {
+        const fileError = validateProofFile(modalNewProofFile);
+        if (fileError) {
+          setError(fileError);
+          setSubmitting(false);
+          return;
+        }
+        allPendingDocs.push({
+          localId: `${Date.now()}-${Math.random()}`,
+          documentType: modalNewDocType,
+          file: modalNewProofFile,
+        });
+      }
+
       const documentsForValidation = [
         ...existingDocs.map((doc) => ({ documentType: doc.documentType })),
-        ...modalPendingDocs.map((doc) => ({ documentType: doc.documentType })),
+        ...allPendingDocs.map((doc) => ({ documentType: doc.documentType })),
       ];
 
       const normalizedCompanyWebsite = normalizeOptionalHttpUrl(companyWebsite);
@@ -389,7 +411,7 @@ export function WorkExperienceSection() {
         companyWebsite: submissionInput.companyWebsite,
         companyLinkedinUrl: submissionInput.companyLinkedinUrl,
       };
-      if (modalPendingDocs.length > 0) {
+      if (allPendingDocs.length > 0) {
         validationPatch.documents = documentsForValidation;
       }
 
@@ -419,7 +441,7 @@ export function WorkExperienceSection() {
 
       const skipDocumentRules = shouldSkipWorkExperienceDocumentRules({
         existingDocumentCount: existingDocs.length,
-        pendingUploadCount: modalPendingDocs.length,
+        pendingUploadCount: allPendingDocs.length,
       });
       const saveValidation = applyWorkExperienceSaveValidation(validation, { skipDocumentRules });
 
@@ -475,7 +497,7 @@ export function WorkExperienceSection() {
       let savedExperienceId = editingId ?? null;
 
       if (editingId) {
-        for (const doc of modalPendingDocs) {
+        for (const doc of allPendingDocs) {
           await api.users.uploadWorkExperienceProofDocument(
             editingId,
             doc.file,
@@ -488,7 +510,7 @@ export function WorkExperienceSection() {
         const created = await api.users.createWorkExperience(payload as CreateWorkExperienceDto);
         savedExperienceId = created.id;
         try {
-          for (const doc of modalPendingDocs) {
+          for (const doc of allPendingDocs) {
             await api.users.uploadWorkExperienceProofDocument(
               created.id,
               doc.file,

@@ -148,7 +148,7 @@ export function RolesGuard({
             className="absolute inset-0 animate-ping rounded-full bg-[var(--brand-teal)]/15"
             aria-hidden="true"
           />
-          <SmartLogo kind="mark" className="relative h-11 w-11 animate-pulse" />
+          <SmartLogo kind="text" className="relative h-6 w-auto animate-pulse" />
         </div>
         <SessionCheckMessage />
       </div>

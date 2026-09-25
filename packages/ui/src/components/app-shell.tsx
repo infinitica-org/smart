@@ -98,7 +98,7 @@ export function AppShell({
               href={config.homeUrl}
               className="flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] rounded-lg"
             >
-              <SmartLogo kind="wordmark" className="h-6 sm:h-7" title={config.portalName} />
+              <SmartLogo kind="mark" className="h-6 w-6 shrink-0" />
               {kicker ? (
                 <span className="hidden sm:inline-flex rounded-full bg-[var(--ds-primary-soft)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ds-primary)]">
                   {kicker}
@@ -201,7 +201,7 @@ export function AppShell({
                 onClick={() => setMobileOpen(false)}
                 className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
               >
-                <SmartLogo kind="wordmark" className="h-6" title={config.portalName} />
+                <SmartLogo kind="text" className="h-6" title={config.portalName} />
               </a>
               <button
                 type="button"

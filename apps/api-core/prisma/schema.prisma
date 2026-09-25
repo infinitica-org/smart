@@ -172,6 +172,22 @@ enum TenantVerificationStatus {
   REJECTED
 }
 
+/// EMP-02 — what a COMPANY user may do inside their company tenant.
+enum CompanyMemberRole {
+  OWNER
+  RECRUITER
+}
+
+/// EMP-02 — employee-count bands on the public company profile.
+enum CompanyEmployeeCount {
+  E_1_10
+  E_11_50
+  E_51_200
+  E_201_500
+  E_501_1000
+  E_1000_PLUS
+}
+
 enum OrganizationType {
   UNIVERSITY
   EMPLOYER
@@ -263,6 +279,8 @@ enum NotificationKind {
   VERIFICATION_RESULT
   INVITATION
   TRUST_ENFORCEMENT
+  APPLICATION
+  MESSAGE
 }
 
 enum ProjectStatus {
@@ -332,28 +350,32 @@ model Batch {
 }
 
 model Invitation {
-  id            String           @id @default(uuid()) @db.Uuid
+  id            String             @id @default(uuid()) @db.Uuid
   email         String
-  fullName      String           @map("full_name")
+  fullName      String             @map("full_name")
   role          UserRole
   /// Null for platform-admin invites (SUPER_ADMIN), which have no owning tenant.
-  institutionId String?          @map("institution_id") @db.Uuid
-  institution   Institution?     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  batchId       String?          @map("batch_id") @db.Uuid
-  batch         Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  groupLabel    String?          @map("group_label")
-  userId        String           @map("user_id") @db.Uuid
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash     String           @unique @map("token_hash")
-  status        InvitationStatus @default(PENDING)
-  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(6)
-  acceptedAt    DateTime?        @map("accepted_at") @db.Timestamptz(6)
-  invitedById   String           @map("invited_by_id") @db.Uuid
-  invitedBy     User             @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
-  lastSentAt    DateTime?        @map("last_sent_at") @db.Timestamptz(6)
-  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  institutionId String?            @map("institution_id") @db.Uuid
+  institution   Institution?       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  batchId       String?            @map("batch_id") @db.Uuid
+  batch         Batch?             @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  /// EMP-02 — set for employer-side invitations (recruiters); null for university invites.
+  companyId     String?            @map("company_id") @db.Uuid
+  companyRole   CompanyMemberRole? @map("company_role")
+  groupLabel    String?            @map("group_label")
+  userId        String             @map("user_id") @db.Uuid
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash     String             @unique @map("token_hash")
+  status        InvitationStatus   @default(PENDING)
+  expiresAt     DateTime           @map("expires_at") @db.Timestamptz(6)
+  acceptedAt    DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  invitedById   String             @map("invited_by_id") @db.Uuid
+  invitedBy     User               @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
+  lastSentAt    DateTime?          @map("last_sent_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([institutionId, status])
+  @@index([companyId, status])
   @@index([batchId])
   @@index([userId])
   @@map("invitations")
@@ -382,73 +404,78 @@ model UniversityContactRequest {
 }
 
 model User {
-  id                     String          @id @default(uuid()) @db.Uuid
-  email                  String          @unique
-  fullName               String          @map("full_name")
-  passwordHash           String?         @map("password_hash")
+  convMemberships        ConversationParticipant[] @relation("ConversationParticipantUser")
+  sentMessages           Message[]                 @relation("MessageSender")
+  blocksMade             Block[]                   @relation("BlockBlocker")
+  blocksReceived         Block[]                   @relation("BlockBlocked")
+  id                     String                    @id @default(uuid()) @db.Uuid
+  email                  String                    @unique
+  fullName               String                    @map("full_name")
+  passwordHash           String?                   @map("password_hash")
   /// S6-VV-92 — consecutive wrong-password count since the last successful login or lockout; never serialized.
-  failedLoginAttempts    Int             @default(0) @map("failed_login_attempts")
+  failedLoginAttempts    Int                       @default(0) @map("failed_login_attempts")
   /// S6-VV-92 — set once failedLoginAttempts hits the threshold; login is refused until this passes.
-  loginLockedUntil       DateTime?       @map("login_locked_until") @db.Timestamptz(6)
+  loginLockedUntil       DateTime?                 @map("login_locked_until") @db.Timestamptz(6)
   role                   UserRole
-  provider               AuthProvider    @default(PASSWORD)
-  emailVerified          Boolean         @default(false) @map("email_verified")
-  institutionId          String?         @map("institution_id") @db.Uuid
-  institution            Institution?    @relation(fields: [institutionId], references: [id])
-  batchId                String?         @map("batch_id") @db.Uuid
-  batch                  Batch?          @relation("BatchMembers", fields: [batchId], references: [id], onDelete: SetNull)
-  groupLabel             String?         @map("group_label")
-  primaryTrackId         String?         @map("primary_track_id") @db.Uuid
-  primaryTrack           Track?          @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
-  secondaryTrackId       String?         @map("secondary_track_id") @db.Uuid
-  secondaryTrack         Track?          @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
-  heldAt                 DateTime?       @map("held_at") @db.Timestamptz(6)
-  heldReason             String?         @map("held_reason")
+  provider               AuthProvider              @default(PASSWORD)
+  emailVerified          Boolean                   @default(false) @map("email_verified")
+  institutionId          String?                   @map("institution_id") @db.Uuid
+  institution            Institution?              @relation(fields: [institutionId], references: [id])
+  batchId                String?                   @map("batch_id") @db.Uuid
+  batch                  Batch?                    @relation("BatchMembers", fields: [batchId], references: [id], onDelete: SetNull)
+  groupLabel             String?                   @map("group_label")
+  primaryTrackId         String?                   @map("primary_track_id") @db.Uuid
+  primaryTrack           Track?                    @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
+  secondaryTrackId       String?                   @map("secondary_track_id") @db.Uuid
+  secondaryTrack         Track?                    @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
+  heldAt                 DateTime?                 @map("held_at") @db.Timestamptz(6)
+  heldReason             String?                   @map("held_reason")
   /// CN-T01 — mandatory candidate onboarding gate (server-side; not localStorage).
-  onboardingCompleted    Boolean         @default(false) @map("onboarding_completed")
+  onboardingCompleted    Boolean                   @default(false) @map("onboarding_completed")
   /// Structured onboarding profile + consent snapshot (JSON).
-  onboardingDetails      Json?           @map("onboarding_details")
+  onboardingDetails      Json?                     @map("onboarding_details")
   /// Object storage key for the candidate profile photo (signed URL served at read time).
-  profilePhotoObjectKey  String?         @map("profile_photo_object_key")
-  dpdpConsentAt          DateTime?       @map("dpdp_consent_at") @db.Timestamptz(6)
+  profilePhotoObjectKey  String?                   @map("profile_photo_object_key")
+  dpdpConsentAt          DateTime?                 @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
-  publicProfileSlug      String?         @unique @map("public_profile_slug")
+  publicProfileSlug      String?                   @unique @map("public_profile_slug")
   /// S6-VV-75 — CGPA on a 0-10 scale, collected during onboarding; denormalized onto User (not
   /// CandidateEducation) because matching needs a single indexable value per student.
-  cgpa                   Decimal?        @map("cgpa") @db.Decimal(4, 2)
+  cgpa                   Decimal?                  @map("cgpa") @db.Decimal(4, 2)
   /// S6-VV-75 — 10th/SSC exam percentage (0-100).
-  sscPercentage          Decimal?        @map("ssc_percentage") @db.Decimal(5, 2)
+  sscPercentage          Decimal?                  @map("ssc_percentage") @db.Decimal(5, 2)
   /// S6-VV-75 — 12th/HSC exam percentage (0-100).
-  hscPercentage          Decimal?        @map("hsc_percentage") @db.Decimal(5, 2)
+  hscPercentage          Decimal?                  @map("hsc_percentage") @db.Decimal(5, 2)
   /// Active academic backlog (placement eligibility).
-  hasActiveBacklog       Boolean?        @map("has_active_backlog")
+  hasActiveBacklog       Boolean?                  @map("has_active_backlog")
   /// Study program (e.g. "B.Tech CSE") + graduation year, collected during onboarding.
   /// graduationYear is denormalized onto User (like cgpa/sscPercentage above) so placement
   /// pool filtering (packages/contracts/src/dto/placement.dto.ts filters.graduationYear)
   /// can query it directly. studyProgram stays JSON-only in onboardingDetails.
-  graduationYear         Int?            @map("graduation_year")
+  graduationYear         Int?                      @map("graduation_year")
   /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
-  username               String?         @map("username")
+  username               String?                   @map("username")
   /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
-  usernameNormalized     String?         @unique @map("username_normalized")
+  usernameNormalized     String?                   @unique @map("username_normalized")
   /// CN-T09 — reservation claims the name; activation (flipped on first visibility opt-in) is a separate step.
-  usernameStatus         UsernameStatus? @map("username_status")
-  usernameReservedAt     DateTime?       @map("username_reserved_at") @db.Timestamptz(6)
-  usernameActivatedAt    DateTime?       @map("username_activated_at") @db.Timestamptz(6)
+  usernameStatus         UsernameStatus?           @map("username_status")
+  usernameReservedAt     DateTime?                 @map("username_reserved_at") @db.Timestamptz(6)
+  usernameActivatedAt    DateTime?                 @map("username_activated_at") @db.Timestamptz(6)
   /// CN-T09 — internal-only rate-limit state for reservation attempts; never serialized in any API response.
-  usernameFailedAttempts Int             @default(0) @map("username_failed_attempts")
-  usernameCooldownUntil  DateTime?       @map("username_cooldown_until") @db.Timestamptz(6)
+  usernameFailedAttempts Int                       @default(0) @map("username_failed_attempts")
+  usernameCooldownUntil  DateTime?                 @map("username_cooldown_until") @db.Timestamptz(6)
   /// CN-T09 — global on/off switch for the public profile page (`publicProfileSlug` already existed; this gates whether it resolves).
-  profileVisible         Boolean         @default(false) @map("profile_visible")
+  profileVisible         Boolean                   @default(false) @map("profile_visible")
   /// CN-T09 — opt-in only; default keeps the public page verified-items-only.
-  hiddenSections         String[]        @default([]) @map("hidden_sections")
+  hiddenSections         String[]                  @default([]) @map("hidden_sections")
+  showInProgressItems    Boolean                   @default(false) @map("show_in_progress_items")
   /// STU-02 — student-controlled switch for employer-initiated messages.
-  allowEmployerMessages  Boolean         @default(true) @map("allow_employer_messages")
+  allowEmployerMessages  Boolean                   @default(true) @map("allow_employer_messages")
   /// STU-02 — self-service deactivation; blocks sign-in and hides the profile until cleared.
-  deactivatedAt          DateTime?       @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedAt          DateTime?                 @map("deactivated_at") @db.Timestamptz(6)
   /// STU-03 — student opt-in: show the count of employer profile views on the dashboard.
-  showEmployerViewCount  Boolean         @default(false) @map("show_employer_view_count")
-  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  showEmployerViewCount  Boolean                   @default(false) @map("show_employer_view_count")
+  createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens                        RefreshToken[]
   emailVerificationTokens              EmailVerificationToken[]
@@ -461,6 +488,11 @@ model User {
   invitationsSent                      Invitation[]                  @relation("InvitationInvitedBy")
   companyId                            String?                       @map("company_id") @db.Uuid
   company                              Company?                      @relation(fields: [companyId], references: [id])
+  /// EMP-02 — role inside the company tenant; null for non-company users.
+  companyRole                          CompanyMemberRole?            @map("company_role")
+  savedJobs                            SavedJob[]                    @relation("SavedJobStudent")
+  hiddenJobs                           HiddenJob[]                   @relation("HiddenJobStudent")
+  reportsMade                          Report[]                      @relation("ReportReporter")
   skillClaims                          SkillClaim[]
   projects                             Project[]
   applications                         Application[]
@@ -994,9 +1026,157 @@ model Company {
   onboardingSessions    CompanyOnboardingSession[]
   verifications         CompanyVerification[]
   verificationDocuments CompanyVerificationDocument[]
+  profile               CompanyProfile?
+  reviews               CompanyReview[]
 
   @@index([organizationId])
   @@map("companies")
+}
+
+/// EMP-02 — editable public profile of a company. `version` is the optimistic lock (If-Match).
+/// Only companies whose verificationStatus is APPROVED are publicly readable.
+model CompanyProfile {
+  id                  String                @id @default(uuid()) @db.Uuid
+  companyId           String                @unique @map("company_id") @db.Uuid
+  company             Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  slug                String                @unique
+  displayName         String                @map("display_name")
+  logoFileId          String?               @map("logo_file_id")
+  website             String?
+  about               String?
+  benefits            String[]              @default([])
+  socialLinks         Json                  @default("{}") @map("social_links")
+  industry            String?
+  employeeCount       CompanyEmployeeCount? @map("employee_count")
+  headquarters        String?
+  additionalLocations String[]              @default([]) @map("additional_locations")
+  version             Int                   @default(1)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_profiles")
+}
+
+/// JOB-02 (Th6-384) — a student's bookmark. Composite PK makes save idempotent.
+model SavedJob {
+  studentId String     @map("student_id") @db.Uuid
+  student   User       @relation("SavedJobStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  jobId     String     @map("job_id") @db.Uuid
+  job       JobOpening @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedAt   DateTime   @default(now()) @map("saved_at") @db.Timestamptz(6)
+
+  @@id([studentId, jobId])
+  @@index([jobId])
+  @@map("saved_jobs")
+}
+
+/// JOB-02 (Th6-385) — a job the student does not want to see again (list and dashboard top matches).
+model HiddenJob {
+  studentId String     @map("student_id") @db.Uuid
+  student   User       @relation("HiddenJobStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  jobId     String     @map("job_id") @db.Uuid
+  job       JobOpening @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reason    String?
+  hiddenAt  DateTime   @default(now()) @map("hidden_at") @db.Timestamptz(6)
+
+  @@id([studentId, jobId])
+  @@index([jobId])
+  @@map("hidden_jobs")
+}
+
+enum ReportTargetType {
+  JOB
+  MESSAGE
+}
+
+enum ReportReason {
+  SCAM
+  DISCRIMINATORY
+  MISLEADING
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+/// JOB-02 (Th6-386) — a user report about content. `targetType` leaves room for other targets
+/// (Th6-482). One report per reporter per target; a repeat returns the existing one.
+model Report {
+  id         String           @id @default(uuid()) @db.Uuid
+  reporterId String           @map("reporter_id") @db.Uuid
+  reporter   User             @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType ReportTargetType @map("target_type")
+  targetId   String           @map("target_id") @db.Uuid
+  reason     ReportReason
+  details    String?
+  status     ReportStatus     @default(OPEN)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([targetType, targetId, status])
+  @@map("reports")
+}
+
+/// Th6-355 — a review of a company left by a student/intern. Submission is a separate (student-side) ticket;
+/// this ticket only lets the company respond, and only where `responsePermitted` is true.
+model CompanyReview {
+  id                String              @id @default(uuid()) @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// The reviewing student; one review per student per company. Never exposed to the company.
+  authorId          String              @map("author_id") @db.Uuid
+  /// Display label only (e.g. "Applicant"); the reviewer's identity is not exposed to the company.
+  authorLabel       String              @map("author_label")
+  rating            Int
+  body              String              @db.Text
+  status            CompanyReviewStatus @default(PUBLISHED)
+  responsePermitted Boolean             @default(false) @map("response_permitted")
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  response          ReviewResponse?
+
+  @@unique([companyId, authorId])
+  @@index([companyId, createdAt])
+  @@map("company_reviews")
+}
+
+enum CompanyReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+/// Th6-355 — the company's single, editable reply to a review (max 1000 chars, enforced in the DTO).
+model ReviewResponse {
+  id        String        @id @default(uuid()) @db.Uuid
+  reviewId  String        @unique @map("review_id") @db.Uuid
+  review    CompanyReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  companyId String        @map("company_id") @db.Uuid
+  authorId  String        @map("author_id") @db.Uuid
+  body      String        @db.Text
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([companyId])
+  @@map("review_responses")
+}
+
+/// EMP-02 — Idempotency-Key ledger for employer mutations: a retry with the same key replays the
+/// stored response instead of repeating the write.
+model IdempotencyRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  scope        String
+  key          String
+  requestHash  String   @map("request_hash")
+  responseBody Json?    @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, scope, key])
+  @@index([createdAt])
+  @@map("idempotency_records")
 }
 
 /// Public company self-onboarding session. Raw session tokens are never stored — only sessionTokenHash.
@@ -1331,14 +1511,18 @@ model JobOpening {
   parsedAt                 DateTime?          @map("parsed_at") @db.Timestamptz(6)
   parsedRequirements       Json?              @map("parsed_requirements")
   status                   JobOpeningStatus   @default(DRAFT)
+  /// JOB-02 — filled by job posting (Th6-358); nullable until then.
+  workMode                 JobWorkMode?       @map("work_mode")
   createdById              String             @map("created_by_id") @db.Uuid
   createdBy                User               @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
   createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   requiredSkills JobOpeningSkill[]
   applications   Application[]
-  matchFeedbacks MatchFeedback[]
-  savedCandidates SavedCandidate[]
+  matchFeedbacks   MatchFeedback[]
+  savedCandidates  SavedCandidate[]
+  savedBy          SavedJob[]
+  hiddenBy         HiddenJob[]
 
   @@index([institutionId, status])
   @@index([companyId])
@@ -1401,27 +1585,133 @@ model Application {
   student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   stage      AtsStage   @default(APPLIED)
   matchScore Decimal?   @map("match_score") @db.Decimal(4, 3)
+  /// APP-01 — optional note the student attached when applying (student-authored, employer-visible).
+  coverNote  String?    @map("cover_note")
+  /// APP-02 (Th6-417) � the company team member responsible for this candidate (a user id in the same company).
+  assigneeId String?    @map("assignee_id") @db.Uuid
   createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   stageEvents ApplicationStageEvent[]
+  snapshot    ApplicationSnapshot?
+  notes       ApplicationNote[]
+  outcome     ApplicationOutcome?
 
   @@unique([openingId, studentId])
   @@index([openingId, stage])
   @@index([studentId, stage])
+  @@index([assigneeId])
   @@map("applications")
 }
 
+/// APP-01 (Th6-394) — immutable record of exactly what the employer could see when the student applied.
+/// Written once inside the apply transaction; there is no update path. Later profile edits never change it.
+model ApplicationSnapshot {
+  id                String      @id @default(uuid()) @db.Uuid
+  applicationId     String      @unique @map("application_id") @db.Uuid
+  application       Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /// Employer-visible profile (the Th6-222 serializer output).
+  profileJson       Json        @map("profile_json")
+  /// Verified skills at apply time: [{ code, name, proficiency }].
+  skillsJson        Json        @map("skills_json")
+  /// Evidence the snapshot relies on: [{ type, id }]. These cannot be deleted while the application exists.
+  evidenceRefs      Json        @map("evidence_refs")
+  /// Fit against the job at apply time, or null when it could not be scored.
+  fitJson           Json?       @map("fit_json")
+  serializerVersion Int         @map("serializer_version")
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("application_snapshots")
+}
+
+/// APP-02 — the hiring pipeline's statuses. Stored stages (AtsStage) stay as the university board uses
+/// them; every history row also records the status it corresponds to.
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  INTERVIEWING
+  OFFERED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Who made a status change. INSTITUTION is the university's own board.
+enum StageActorType {
+  EMPLOYER
+  STUDENT
+  SYSTEM
+  INSTITUTION
+}
+
+/// APP-02 (Th6-418) — append-only record of every status change. Written only by HiringService; there is no
+/// update or delete path, and the database rejects UPDATE (see the application_pipeline migration).
 model ApplicationStageEvent {
+  id            String             @id @default(uuid()) @db.Uuid
+  applicationId String             @map("application_id") @db.Uuid
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStage     AtsStage?          @map("from_stage")
+  toStage       AtsStage           @map("to_stage")
+  /// APP-02 — the organisation that owns the application: the company, or the institution for university postings.
+  orgId         String             @map("org_id") @db.Uuid
+  fromStatus    ApplicationStatus? @map("from_status")
+  toStatus      ApplicationStatus  @map("to_status")
+  /// Who made the change (null for system changes).
+  actorId       String?            @map("actor_id") @db.Uuid
+  actorType     StageActorType     @map("actor_type")
+  /// Optional note (an employer's remark or a student's withdrawal reason); internal, never in student APIs.
+  note          String?
+  /// Where the change came from: apply, employer_board, student_withdraw, tpo_board, shortlist, backfill...
+  source        String
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([applicationId, createdAt])
+  @@index([orgId, createdAt])
+  @@map("application_stage_events")
+}
+
+/// APP-02 (Th6-416) � internal candidate notes. Company-only: no student API selects this table. Append-only.
+model ApplicationNote {
   id            String      @id @default(uuid()) @db.Uuid
   applicationId String      @map("application_id") @db.Uuid
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  fromStage     AtsStage?   @map("from_stage")
-  toStage       AtsStage    @map("to_stage")
+  orgId         String      @map("org_id") @db.Uuid
+  authorId      String      @map("author_id") @db.Uuid
+  body          String
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([applicationId, createdAt])
-  @@map("application_stage_events")
+  @@map("application_notes")
+}
+
+enum OfferOutcome {
+  ACCEPTED
+  DECLINED
+  WITHDRAWN_BY_COMPANY
+}
+
+enum JoiningOutcome {
+  JOINED
+  NO_SHOW
+  DEFERRED
+}
+
+/// APP-02 (Th6-420) � offer and joining result for an application; one row, updated as the outcome becomes known.
+model ApplicationOutcome {
+  id             String          @id @default(uuid()) @db.Uuid
+  applicationId  String          @unique @map("application_id") @db.Uuid
+  application    Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  orgId          String          @map("org_id") @db.Uuid
+  offerOutcome   OfferOutcome?   @map("offer_outcome")
+  joiningOutcome JoiningOutcome? @map("joining_outcome")
+  joiningDate    DateTime?       @map("joining_date") @db.Date
+  note           String?
+  recordedBy     String          @map("recorded_by") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([orgId])
+  @@map("application_outcomes")
 }
 
 model Notification {
@@ -1434,6 +1724,8 @@ model Notification {
   linkUrl   String?          @map("link_url")
   readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
   metadata  Json?
+  /// APP-01 — one notification per event: a retry with the same key is a no-op.
+  dedupeKey String?          @unique @map("dedupe_key")
   createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, readAt])
@@ -1543,6 +1835,14 @@ model FeatureFlagOverride {
   @@index([institutionId])
   @@index([companyId])
   @@map("feature_flag_overrides")
+}
+
+/// JOB-02 — where the work happens. Nullable on JobOpening: openings posted before this field existed
+/// have none, and are left out of results only when a work-mode filter is applied.
+enum JobWorkMode {
+  ONSITE
+  HYBRID
+  REMOTE
 }
 
 enum EmploymentType {
@@ -2448,8 +2748,6 @@ model ProfileView {
   viewer               User?    @relation("ProfileViewViewer", fields: [viewerId], references: [id], onDelete: SetNull)
   viewerRole           String   @map("viewer_role")
   viewerOrganizationId String?  @map("viewer_organization_id") @db.Uuid
-  /// Where the view came from, e.g. `public_link`.
-  source               String   @default("public_link")
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([studentId, createdAt])
@@ -2520,4 +2818,107 @@ model SavedCandidate {
   @@index([savedBy])
   @@index([studentId])
   @@map("saved_candidates")
+}
+
+/// COM-01 (Th6-422) - who is in a conversation, and in what capacity.
+enum ConversationParticipantRole {
+  STUDENT
+  EMPLOYER
+  ADVISOR
+}
+
+/// COM-01 (Th6-427) - a reported message is REPORTED; HELD once a ModerationHold preserves it.
+enum MessageModerationStatus {
+  NONE
+  REPORTED
+  HELD
+}
+
+/// COM-01 (Th6-422) - one DIRECT conversation per pair of users; `pairKey` is the two user ids sorted.
+model Conversation {
+  id            String   @id @default(uuid()) @db.Uuid
+  type          String   @default("DIRECT")
+  pairKey       String   @unique @map("pair_key")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastMessageAt DateTime @default(now()) @map("last_message_at") @db.Timestamptz(6)
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String                      @id @default(uuid()) @db.Uuid
+  conversationId String                      @map("conversation_id") @db.Uuid
+  conversation   Conversation                @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String                      @map("user_id") @db.Uuid
+  user           User                        @relation("ConversationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
+  role           ConversationParticipantRole
+  orgId          String?                     @map("org_id") @db.Uuid
+  lastReadAt     DateTime?                   @map("last_read_at") @db.Timestamptz(6)
+  mutedAt        DateTime?                   @map("muted_at") @db.Timestamptz(6)
+  hiddenAt       DateTime?                   @map("hidden_at") @db.Timestamptz(6)
+  leftAt         DateTime?                   @map("left_at") @db.Timestamptz(6)
+  joinedAt       DateTime                    @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  @@unique([conversationId, userId])
+  @@index([userId, hiddenAt])
+  @@map("conversation_participants")
+}
+
+/// `search_vector` is a STORED generated tsvector (see the migration), used by Th6-425 search.
+model Message {
+  id               String                   @id @default(uuid()) @db.Uuid
+  conversationId   String                   @map("conversation_id") @db.Uuid
+  conversation     Conversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String                   @map("sender_id") @db.Uuid
+  sender           User                     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body             String
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  editedAt         DateTime?                @map("edited_at") @db.Timestamptz(6)
+  deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  deletedBy        String?                  @map("deleted_by") @db.Uuid
+  moderationStatus MessageModerationStatus  @default(NONE) @map("moderation_status")
+  idempotencyKey   String                   @map("idempotency_key")
+  searchVector     Unsupported("tsvector")? @map("search_vector")
+
+  holds ModerationHold[]
+
+  @@unique([senderId, idempotencyKey])
+  @@index([conversationId, createdAt])
+  @@index([searchVector], type: Gin)
+  @@map("messages")
+}
+
+/// COM-01 (Th6-427) - a user blocks another: no new messages either way.
+model Block {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blocker   User     @relation("BlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String   @map("blocked_id") @db.Uuid
+  blocked   User     @relation("BlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+/// COM-01 (Th6-427/428) - evidence preserved when a message is reported. `snapshot` holds the message
+/// plus surrounding context, so it survives the sender deleting the message.
+model ModerationHold {
+  id         String    @id @default(uuid()) @db.Uuid
+  messageId  String    @map("message_id") @db.Uuid
+  message    Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reportId   String    @unique @map("report_id") @db.Uuid
+  snapshot   Json
+  heldUntil  DateTime  @map("held_until") @db.Timestamptz(6)
+  releasedAt DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([messageId])
+  @@index([heldUntil, releasedAt])
+  @@map("moderation_holds")
+>>>>>>> origin/feat/sep25-re-engineering
 }

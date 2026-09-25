@@ -23,6 +23,7 @@ describe('TPO_NAV', () => {
       'Students',
       'Whitelist',
       'Employers',
+      'Messages',
       'Reports',
     ]);
     expect(employersLink).toMatchObject({ kind: 'link', href: '/companies' });

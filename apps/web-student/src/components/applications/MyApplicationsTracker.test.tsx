@@ -1,178 +1,266 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SmartApiError } from '@smart/api-client';
+import type { StudentApplicationCard, StudentApplicationDetail } from '@smart/contracts';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CandidateApplicationDto } from '@smart/contracts';
 import { MyApplicationsTracker } from './MyApplicationsTracker';
 
-const listMyApplications = vi.fn();
-const listWorkExperiences = vi.fn().mockResolvedValue([]);
-
+const studentApplications = vi.hoisted(() => ({
+  list: vi.fn(),
+  detail: vi.fn(),
+  withdraw: vi.fn(),
+}));
+const listWorkExperiences = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({
   api: {
-    placement: {
-      listMyApplications: (...args: unknown[]) => listMyApplications(...args),
-    },
-    users: {
-      listWorkExperiences: (...args: unknown[]) => listWorkExperiences(...args),
-    },
+    studentApplications,
+    users: { listWorkExperiences },
+    companies: { createReview: vi.fn() },
+  },
+}));
+vi.mock('../../lib/api', () => ({
+  api: {
+    studentApplications,
+    users: { listWorkExperiences },
+    companies: { createReview: vi.fn() },
   },
 }));
 
-function application(overrides: Partial<CandidateApplicationDto> = {}): CandidateApplicationDto {
+const APP = '00000000-0000-4000-8000-000000000001';
+const JOB = '00000000-0000-4000-8000-000000000010';
+const COMPANY = '11111111-1111-4111-8111-111111111111';
+
+function card(over: Partial<StudentApplicationCard> = {}): StudentApplicationCard {
   return {
-    applicationId: '00000000-0000-4000-8000-000000000001',
-    openingId: '00000000-0000-4000-8000-000000000010',
-    studentId: '00000000-0000-4000-8000-000000000020',
-    stage: 'SHORTLISTED',
-    matchScore: 0.88,
-    createdAt: '2026-09-01T08:00:00.000Z',
-    updatedAt: '2026-09-02T10:00:00.000Z',
-    companyName: 'Acme Labs',
+    id: APP,
+    referenceNumber: 'APP-00000000',
+    jobId: JOB,
     roleTitle: 'Backend Engineer',
+    companyName: 'Acme Labs',
+    companyId: null,
+    companyVerified: false,
+    companyVerifiedAt: null,
     location: 'Bengaluru',
-    employmentType: 'FULL_TIME',
-    domain: 'SOFTWARE_IT',
-    ...overrides,
+    status: 'APPLIED',
+    statusLabel: 'Submitted',
+    appliedAt: '2026-09-01T08:00:00.000Z',
+    updatedAt: '2026-09-02T10:00:00.000Z',
+    ...over,
   };
 }
 
-function renderTracker(pollIntervalMs = 60_000): ReturnType<typeof render> {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, refetchOnWindowFocus: false, refetchIntervalInBackground: true },
-    },
-  });
-  const view = render(
-    <QueryClientProvider client={client}>
-      <MyApplicationsTracker pollIntervalMs={pollIntervalMs} />
-    </QueryClientProvider>,
-  );
-  // Every test in this file exercises the ATS pipeline, which now lives behind
-  // its own tab (the component defaults to the Endorsements tab).
-  fireEvent.click(screen.getByRole('button', { name: /ATS Applications Pipeline/i }));
-  return view;
+function detail(over: Partial<StudentApplicationDetail> = {}): StudentApplicationDetail {
+  return {
+    ...card(),
+    coverNote: null,
+    timeline: [{ status: 'APPLIED', statusLabel: 'Submitted', at: '2026-09-01T08:00:00.000Z' }],
+    canWithdraw: true,
+    ...over,
+  };
 }
 
-describe('MyApplicationsTracker', () => {
+function renderTracker(pollIntervalMs = 60_000) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MyApplicationsTracker pollIntervalMs={pollIntervalMs} initialTab="applications" />
+    </QueryClientProvider>,
+  );
+}
+
+describe('MyApplicationsTracker (Th6-392/393)', () => {
   beforeEach(() => {
-    listMyApplications.mockReset();
+    Object.values(studentApplications).forEach((fn) => fn.mockReset());
+    listWorkExperiences.mockReset().mockResolvedValue([]);
+    studentApplications.detail.mockResolvedValue(detail());
   });
+  afterEach(cleanup);
 
-  afterEach(() => {
-    cleanup();
-  });
-
-  it('renders company, role, and canonical ATS stage for the authenticated list', async () => {
-    listMyApplications.mockResolvedValue({ applications: [application()] });
-
+  it('shows company, role and the student-facing status, never an internal stage name', async () => {
+    studentApplications.list.mockResolvedValue({
+      applications: [card({ status: 'REVIEWING', statusLabel: 'Under review' })],
+    });
     renderTracker();
-
-    await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
+    expect((await screen.findAllByText('Backend Engineer')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Acme Labs').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0);
-    expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
-      'SHORTLISTED',
+    expect(screen.getByTestId('status-label').textContent).toBe('Under review');
+    const page = document.body.textContent ?? '';
+    for (const internal of ['AI-Verified', 'Shortlisted', 'Applied / New Matches', 'Rejected']) {
+      expect(page).not.toContain(internal);
+    }
+  });
+
+  it('shows a progress bar up to the current status', async () => {
+    studentApplications.list.mockResolvedValue({
+      applications: [card({ status: 'INTERVIEWING', statusLabel: 'Interviewing' })],
+    });
+    renderTracker();
+    await screen.findAllByText('Backend Engineer');
+    const bars = screen.getAllByTestId('status-bar');
+    expect(bars[0]?.getAttribute('data-status')).toBe('INTERVIEWING');
+    const reached = [...(bars[0]?.querySelectorAll('[data-reached]') ?? [])].map((n) =>
+      n.getAttribute('data-reached'),
     );
-    expect(listMyApplications).toHaveBeenCalledWith();
+    expect(reached).toEqual(['true', 'true', 'true', 'false', 'false']);
   });
 
-  it('highlights pipeline stages up to the current CO-T02 column', async () => {
-    listMyApplications.mockResolvedValue({
-      applications: [application({ stage: 'INTERVIEW' })],
+  it.each([
+    ['HIRED', 'Hired'],
+    ['REJECTED', 'Not selected'],
+    ['WITHDRAWN', 'Withdrawn'],
+    ['OFFERED', 'Offer'],
+  ] as const)('labels %s as "%s"', async (status, label) => {
+    studentApplications.list.mockResolvedValue({
+      applications: [card({ status, statusLabel: label })],
     });
-
     renderTracker();
-
-    await waitFor(() => expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0));
-    const segments = screen.getAllByTestId('ats-timeline')[0]?.querySelectorAll('[data-reached]');
-    expect([...(segments ?? [])].map((node) => node.getAttribute('data-reached'))).toEqual([
-      'true',
-      'true',
-      'true',
-      'true',
-      'false',
-      'false',
-    ]);
+    expect((await screen.findByTestId('status-label')).textContent).toBe(label);
+    if (status === 'REJECTED' || status === 'WITHDRAWN') {
+      // An ending, not a step past Hired: no step is highlighted.
+      const steps = [
+        ...(screen.getAllByTestId('status-bar')[0]?.querySelectorAll('[data-reached]') ?? []),
+      ];
+      expect(steps.every((n) => n.getAttribute('data-reached') === 'false')).toBe(true);
+    }
   });
 
-  it('renders the AI-Verified stage introduced alongside CO-T02', async () => {
-    listMyApplications.mockResolvedValue({
-      applications: [application({ stage: 'AI_VERIFIED' })],
+  it('shows the verified badge only when the server marks the company verified', async () => {
+    studentApplications.list.mockResolvedValue({
+      applications: [
+        card({ companyVerified: true, companyVerifiedAt: '2026-09-01T10:00:00.000Z' }),
+        card({ id: '00000000-0000-4000-8000-000000000002', companyName: 'Plain Co' }),
+      ],
     });
-
     renderTracker();
-
-    await waitFor(() => expect(screen.getAllByText('AI-Verified').length).toBeGreaterThan(0));
+    await screen.findAllByText('Backend Engineer');
+    const items = within(screen.getByLabelText('My applications')).getAllByRole('listitem');
+    expect(within(items[0] as HTMLElement).getByTestId('verified-badge')).toBeTruthy();
+    expect(within(items[1] as HTMLElement).queryByTestId('verified-badge')).toBeNull();
   });
 
-  it('renders the Hired stage as the final, non-terminal pipeline step', async () => {
-    listMyApplications.mockResolvedValue({
-      applications: [application({ stage: 'HIRED' })],
-    });
-
+  it('offers a company review only for jobs linked to a company', async () => {
+    studentApplications.list.mockResolvedValue({ applications: [card({ companyId: COMPANY })] });
     renderTracker();
-
-    await waitFor(() => expect(screen.getAllByText('Hired').length).toBeGreaterThan(0));
+    expect(await screen.findByRole('button', { name: 'Review this company' })).toBeTruthy();
+    cleanup();
+    studentApplications.list.mockResolvedValue({ applications: [card({ companyId: null })] });
+    renderTracker();
+    await screen.findAllByText('Backend Engineer');
+    expect(screen.queryByRole('button', { name: 'Review this company' })).toBeNull();
   });
 
-  it('shows the updated stage after a poll cycle without a manual refresh', async () => {
-    listMyApplications
-      .mockResolvedValueOnce({ applications: [application({ stage: 'SHORTLISTED' })] })
-      .mockResolvedValue({
-        applications: [
-          application({
-            stage: 'INTERVIEW',
-            updatedAt: '2026-09-02T10:05:00.000Z',
-          }),
+  it('shows the history from the detail endpoint, with the cover note', async () => {
+    studentApplications.list.mockResolvedValue({ applications: [card()] });
+    studentApplications.detail.mockResolvedValue(
+      detail({
+        coverNote: 'I love robots.',
+        timeline: [
+          { status: 'APPLIED', statusLabel: 'Submitted', at: '2026-09-01T08:00:00.000Z' },
+          { status: 'REVIEWING', statusLabel: 'Under review', at: '2026-09-03T08:00:00.000Z' },
         ],
-      });
-
-    renderTracker(25);
-
-    await waitFor(() => expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0));
-    await waitFor(
-      () => {
-        expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
-        expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
-          'INTERVIEW',
-        );
-      },
-      { timeout: 1500 },
+      }),
     );
+    renderTracker();
+    const history = await screen.findByLabelText('Application history');
+    expect(within(history).getByText('Submitted')).toBeTruthy();
+    expect(within(history).getByText('Under review')).toBeTruthy();
+    expect(screen.getByText('I love robots.')).toBeTruthy();
+  });
+
+  it('shows the updated status after a poll cycle without a manual refresh', async () => {
+    studentApplications.list
+      .mockResolvedValueOnce({ applications: [card()] })
+      .mockResolvedValue({ applications: [card({ status: 'OFFERED', statusLabel: 'Offer' })] });
+    renderTracker(30);
+    expect((await screen.findByTestId('status-label')).textContent).toBe('Submitted');
+    await waitFor(() => expect(screen.getByTestId('status-label').textContent).toBe('Offer'));
   });
 
   it('stops polling after unmount', async () => {
-    listMyApplications.mockResolvedValue({ applications: [application()] });
-
-    const view = renderTracker(20);
-    await waitFor(() => expect(listMyApplications).toHaveBeenCalled());
-    const callsAtUnmount = listMyApplications.mock.calls.length;
-    view.unmount();
-    await new Promise((resolve) => {
-      setTimeout(resolve, 80);
-    });
-    expect(listMyApplications.mock.calls.length).toBe(callsAtUnmount);
+    studentApplications.list.mockResolvedValue({ applications: [card()] });
+    const { unmount } = renderTracker(30);
+    await screen.findAllByText('Backend Engineer');
+    unmount();
+    const calls = studentApplications.list.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(studentApplications.list.mock.calls.length).toBe(calls);
   });
 
-  it('shows an empty state when the student has no applications', async () => {
-    listMyApplications.mockResolvedValue({ applications: [] });
-
+  it('shows an empty state with a link to browse jobs', async () => {
+    studentApplications.list.mockResolvedValue({ applications: [] });
     renderTracker();
-
-    await waitFor(() => expect(screen.getByText('No applications in pipeline')).toBeTruthy());
-    expect(screen.queryByText('Backend Engineer')).toBeNull();
+    expect(await screen.findByText('No applications yet')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Browse jobs' }).getAttribute('href')).toBe('/jobs');
   });
 
-  it('shows an error state and retries without accepting a studentId', async () => {
-    listMyApplications.mockRejectedValueOnce(new Error('network')).mockResolvedValue({
-      applications: [application()],
+  it('shows an error state and retries', async () => {
+    studentApplications.list.mockRejectedValueOnce(new Error('down'));
+    renderTracker();
+    expect(await screen.findByText('Could not load your applications')).toBeTruthy();
+    studentApplications.list.mockResolvedValue({ applications: [card()] });
+    fireEvent.click(screen.getByRole('button', { name: /retry|try again/i }));
+    expect((await screen.findAllByText('Backend Engineer')).length).toBeGreaterThan(0);
+  });
+
+  describe('withdraw', () => {
+    it('asks for confirmation, sends the optional reason with an Idempotency-Key, and confirms', async () => {
+      studentApplications.list.mockResolvedValue({ applications: [card()] });
+      studentApplications.withdraw.mockResolvedValue(
+        detail({ status: 'WITHDRAWN', statusLabel: 'Withdrawn', canWithdraw: false }),
+      );
+      renderTracker();
+      fireEvent.click(await screen.findByRole('button', { name: 'Withdraw application' }));
+      expect(studentApplications.withdraw).not.toHaveBeenCalled(); // nothing until confirmed
+      fireEvent.change(screen.getByLabelText('Reason (optional)'), {
+        target: { value: 'Took another offer' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+      await waitFor(() => expect(studentApplications.withdraw).toHaveBeenCalledTimes(1));
+      const [id, body, key] = studentApplications.withdraw.mock.calls[0] ?? [];
+      expect([id, body]).toEqual([APP, { reason: 'Took another offer' }]);
+      expect(typeof key).toBe('string');
+      expect(await screen.findByText('Your application was withdrawn.')).toBeTruthy();
     });
 
-    renderTracker();
+    it('does not offer withdraw once the application is closed', async () => {
+      studentApplications.list.mockResolvedValue({
+        applications: [card({ status: 'HIRED', statusLabel: 'Hired' })],
+      });
+      studentApplications.detail.mockResolvedValue(
+        detail({ status: 'HIRED', statusLabel: 'Hired', canWithdraw: false }),
+      );
+      renderTracker();
+      await screen.findByLabelText('Application history');
+      expect(screen.queryByRole('button', { name: 'Withdraw application' })).toBeNull();
+    });
 
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
-    await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
-    expect(listMyApplications).toHaveBeenCalledWith();
+    it('shows the server message on failure and reuses the same key when retried', async () => {
+      studentApplications.list.mockResolvedValue({ applications: [card()] });
+      studentApplications.withdraw
+        .mockRejectedValueOnce(
+          new SmartApiError({
+            error: 'cannot_withdraw',
+            message: 'Already closed.',
+            statusCode: 422,
+          } as never),
+        )
+        .mockResolvedValueOnce(
+          detail({ status: 'WITHDRAWN', statusLabel: 'Withdrawn', canWithdraw: false }),
+        );
+      renderTracker();
+      fireEvent.click(await screen.findByRole('button', { name: 'Withdraw application' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+      expect(await screen.findByText('Already closed.')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+      await waitFor(() => expect(studentApplications.withdraw).toHaveBeenCalledTimes(2));
+      expect(studentApplications.withdraw.mock.calls[1]?.[2]).toBe(
+        studentApplications.withdraw.mock.calls[0]?.[2],
+      );
+    });
   });
 });

@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Check, Link2, Plus, Users } from 'lucide-react';
-import { Badge, PageHeader, Modal } from '../../../components/ui';
-import { getCurrentUser } from '../../../lib/auth';
-import type { Teammate } from '../../../lib/types';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Users } from 'lucide-react';
+import { isSmartApiError } from '@smart/api-client';
+import type { CompanyMember, CompanyMemberRole } from '@smart/contracts';
+import { Alert, ConfirmDialog, EmptyState, ErrorState, FormMessage, LoadingState } from '@smart/ui';
+import { api } from '@/lib/api';
+import { createKeyTracker, fieldErrorsFromError } from '@/lib/company-profile-form';
+import { useCompanyAccount } from '@/lib/use-company-account';
+import { Badge, Modal, PageHeader } from '../../../components/ui';
 import {
   input,
   label,
@@ -19,113 +24,155 @@ import {
   tableShell,
 } from '../../../lib/ui';
 
+export const COMPANY_MEMBERS_QUERY_KEY = ['employer', 'members'] as const;
+
+const ROLE_LABEL: Record<CompanyMemberRole, string> = { OWNER: 'Owner', RECRUITER: 'Recruiter' };
+const STATUS_TONE = { ACTIVE: 'green', INVITED: 'amber', DEACTIVATED: 'red' } as const;
+
+/** Server error → one readable line (last-owner, domain mismatch, etc. all carry a message). */
+function messageFrom(error: unknown, fallback: string): string {
+  return isSmartApiError(error) && error.message ? error.message : fallback;
+}
+
 export default function TeammatesPage() {
-  const [copied, setCopied] = useState(false);
-  const [teammates, setTeammates] = useState<Teammate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('Recruiter');
+  const queryClient = useQueryClient();
+  const { data: account } = useCompanyAccount();
+  const members = useQuery({
+    queryKey: COMPANY_MEMBERS_QUERY_KEY,
+    queryFn: () => api.employer.listMembers(),
+    retry: false,
+  });
 
-  useEffect(() => {
-    getCurrentUser()
-      .then((user) => {
-        if (user && user.email) {
-          const rawName = user.email.split('@')[0] || 'Team Member';
-          setTeammates([
-            {
-              name: rawName,
-              email: user.email,
-              role:
-                user.role === 'SUPER_ADMIN' || user.role === 'INSTITUTION_ADMIN'
-                  ? 'Company Admin'
-                  : 'Recruiter',
-              status: 'Registered',
-            },
-          ]);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState({ email: '', fullName: '', allowExternalDomain: false });
+  const [inviteErrors, setInviteErrors] = useState<Record<string, string>>({});
+  const [toDeactivate, setToDeactivate] = useState<CompanyMember | null>(null);
+  const [reassignTo, setReassignTo] = useState('');
+  const keys = useRef(createKeyTracker());
 
-  async function copyInvite() {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/login`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-    } catch {
-      // Clipboard fallback
-    }
-  }
+  const list = members.data?.members ?? [];
+  const self = list.find((m) => m.id === account?.userId);
+  const isOwner = self?.role === 'OWNER';
+  const refresh = () => queryClient.invalidateQueries({ queryKey: COMPANY_MEMBERS_QUERY_KEY });
 
-  function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
-    const name = inviteEmail.split('@')[0] || 'Colleague';
-    setTeammates((prev) => [
-      ...prev,
-      {
-        name,
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        status: 'Invited',
-      },
-    ]);
-    setInviteEmail('');
-    setInviteModalOpen(false);
-  }
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      api.employer.inviteRecruiter(invite, keys.current.keyFor(`invite:${JSON.stringify(invite)}`)),
+    onSuccess: async (result) => {
+      keys.current.reset();
+      setInviteOpen(false);
+      setInvite({ email: '', fullName: '', allowExternalDomain: false });
+      setInviteErrors({});
+      setNotice({ tone: 'success', text: `Invitation sent to ${result.email}.` });
+      await refresh();
+    },
+    onError: (error) => {
+      const fieldErrors = fieldErrorsFromError(error);
+      setInviteErrors(
+        fieldErrors ?? { form: messageFrom(error, 'Could not send the invitation.') },
+      );
+    },
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: (vars: { member: CompanyMember; role: CompanyMemberRole }) =>
+      api.employer.changeMemberRole(
+        vars.member.id,
+        { role: vars.role },
+        keys.current.keyFor(`role:${vars.member.id}:${vars.role}`),
+      ),
+    onSuccess: async () => {
+      keys.current.reset();
+      setNotice({ tone: 'success', text: 'Role updated.' });
+      await refresh();
+    },
+    onError: (error) =>
+      setNotice({ tone: 'danger', text: messageFrom(error, 'Could not update the role.') }),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (member: CompanyMember) =>
+      api.employer.deactivateMember(
+        member.id,
+        reassignTo ? { reassignToMemberId: reassignTo } : {},
+        keys.current.keyFor(`deactivate:${member.id}:${reassignTo}`),
+      ),
+    onSuccess: async () => {
+      keys.current.reset();
+      setToDeactivate(null);
+      setReassignTo('');
+      setNotice({ tone: 'success', text: 'Teammate deactivated and signed out.' });
+      await refresh();
+    },
+    onError: (error) =>
+      setNotice({
+        tone: 'danger',
+        text: messageFrom(error, 'Could not deactivate this teammate.'),
+      }),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (member: CompanyMember) =>
+      api.employer.reactivateMember(member.id, keys.current.keyFor(`reactivate:${member.id}`)),
+    onSuccess: async () => {
+      keys.current.reset();
+      setNotice({ tone: 'success', text: 'Teammate reactivated.' });
+      await refresh();
+    },
+    onError: (error) =>
+      setNotice({
+        tone: 'danger',
+        text: messageFrom(error, 'Could not reactivate this teammate.'),
+      }),
+  });
+
+  const reassignCandidates = list.filter(
+    (m) => m.status !== 'DEACTIVATED' && m.id !== toDeactivate?.id,
+  );
 
   return (
     <div className={pageStack}>
       <PageHeader
         title="Teammates"
-        description="Manage your hiring team members who can post jobs and review student candidates."
+        description="Manage the recruiters and owners who can post jobs and review student candidates."
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setInviteModalOpen(true)}
-              className={primaryButton}
-            >
+          isOwner ? (
+            <button type="button" onClick={() => setInviteOpen(true)} className={primaryButton}>
               <Plus className="size-4" aria-hidden />
-              Invite teammate
+              Invite recruiter
             </button>
-            <button type="button" onClick={() => void copyInvite()} className={secondaryButton}>
-              {copied ? (
-                <Check className="size-4 text-emerald-600" aria-hidden />
-              ) : (
-                <Link2 className="size-4" aria-hidden />
-              )}
-              {copied ? 'Copied!' : 'Copy invite link'}
-            </button>
-          </div>
+          ) : null
         }
       />
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center rounded-[20px] border border-[var(--ds-border)] bg-white">
-          <p className="text-sm text-[var(--ds-text-muted)]">Loading team members...</p>
-        </div>
-      ) : teammates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[20px] border border-[var(--ds-border)] bg-white p-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-600 mb-4">
-            <Users className="size-6" />
-          </div>
-          <h2 className="text-base font-semibold text-[var(--ds-text)]">No teammates yet</h2>
-          <p className="mt-1 max-w-sm text-[13px] text-[var(--ds-text-muted)]">
-            Invite recruiters and hiring managers to collaborate on job postings and candidate
-            reviews.
-          </p>
-          <button
-            type="button"
-            onClick={() => setInviteModalOpen(true)}
-            className={`mt-4 ${primaryButton}`}
-          >
-            <Plus className="size-4" />
-            Invite your first teammate
-          </button>
-        </div>
+      {notice ? (
+        <Alert tone={notice.tone} role={notice.tone === 'danger' ? 'alert' : 'status'}>
+          {notice.text}
+        </Alert>
+      ) : null}
+
+      {members.isPending ? (
+        <LoadingState message="Loading team members…" />
+      ) : members.isError ? (
+        <ErrorState
+          title="Could not load your team"
+          message="Check your connection and try again."
+          onRetry={() => void members.refetch()}
+        />
+      ) : list.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No teammates yet"
+          description="Invite recruiters to collaborate on job postings and candidate reviews."
+          action={
+            isOwner ? (
+              <button type="button" onClick={() => setInviteOpen(true)} className={primaryButton}>
+                Invite your first recruiter
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className={tableShell}>
           <table className={table}>
@@ -134,69 +181,179 @@ export default function TeammatesPage() {
                 <th className={tableHeadCell}>Name</th>
                 <th className={tableHeadCell}>Role</th>
                 <th className={tableHeadCell}>Status</th>
+                {isOwner ? <th className={tableHeadCell}>Actions</th> : null}
               </tr>
             </thead>
             <tbody>
-              {teammates.map((t) => (
-                <tr key={t.email} className={tableRow}>
-                  <td className={tableCell}>
-                    <p className="font-semibold capitalize text-[var(--ds-text)]">{t.name}</p>
-                    <p className="text-[12px] text-[var(--ds-text-muted)]">{t.email}</p>
-                  </td>
-                  <td className={tableCell}>{t.role}</td>
-                  <td className={tableCell}>
-                    <Badge tone={t.status === 'Registered' ? 'green' : 'amber'}>{t.status}</Badge>
-                  </td>
-                </tr>
-              ))}
+              {list.map((member) => {
+                const isSelf = member.id === account?.userId;
+                return (
+                  <tr key={member.id} className={tableRow}>
+                    <td className={tableCell}>
+                      <p className="font-semibold text-[var(--ds-text)]">
+                        {member.fullName}
+                        {isSelf ? ' (you)' : ''}
+                      </p>
+                      <p className="text-[12px] text-[var(--ds-text-muted)]">{member.email}</p>
+                    </td>
+                    <td className={tableCell}>
+                      {isOwner && member.status !== 'DEACTIVATED' ? (
+                        <select
+                          aria-label={`Role for ${member.fullName}`}
+                          className={input}
+                          value={member.role}
+                          disabled={roleMutation.isPending}
+                          onChange={(e) =>
+                            roleMutation.mutate({
+                              member,
+                              role: e.target.value as CompanyMemberRole,
+                            })
+                          }
+                        >
+                          <option value="OWNER">{ROLE_LABEL.OWNER}</option>
+                          <option value="RECRUITER">{ROLE_LABEL.RECRUITER}</option>
+                        </select>
+                      ) : (
+                        ROLE_LABEL[member.role]
+                      )}
+                    </td>
+                    <td className={tableCell}>
+                      <Badge tone={STATUS_TONE[member.status]}>{member.status.toLowerCase()}</Badge>
+                    </td>
+                    {isOwner ? (
+                      <td className={tableCell}>
+                        {isSelf ? null : member.status === 'DEACTIVATED' ? (
+                          <button
+                            type="button"
+                            className={secondaryButton}
+                            disabled={reactivateMutation.isPending}
+                            onClick={() => reactivateMutation.mutate(member)}
+                          >
+                            Reactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className={secondaryButton}
+                            onClick={() => {
+                              setReassignTo('');
+                              deactivateMutation.reset();
+                              setToDeactivate(member);
+                            }}
+                          >
+                            Deactivate
+                          </button>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      <Modal
-        open={inviteModalOpen}
-        title="Invite team member"
-        onClose={() => setInviteModalOpen(false)}
-      >
-        <form onSubmit={handleInvite} className="space-y-4">
+      <Modal open={inviteOpen} title="Invite recruiter" onClose={() => setInviteOpen(false)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setInviteErrors({});
+            inviteMutation.mutate();
+          }}
+          className="space-y-4"
+          noValidate
+        >
+          <FormMessage error={inviteErrors.form} />
           <div>
-            <label className={label}>Work Email</label>
+            <label htmlFor="invite-name" className={label}>
+              Full name
+            </label>
             <input
-              type="email"
-              required
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
+              id="invite-name"
               className={input}
+              value={invite.fullName}
+              onChange={(e) => setInvite({ ...invite, fullName: e.target.value })}
             />
+            <FormMessage error={inviteErrors.fullName} />
           </div>
           <div>
-            <label className={label}>Role</label>
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
+            <label htmlFor="invite-email" className={label}>
+              Work email
+            </label>
+            <input
+              id="invite-email"
+              type="email"
               className={input}
-            >
-              <option value="Recruiter">Recruiter</option>
-              <option value="Hiring Manager">Hiring Manager</option>
-              <option value="Company Admin">Company Admin</option>
-            </select>
+              placeholder="colleague@yourcompany.com"
+              value={invite.email}
+              onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+            />
+            <FormMessage error={inviteErrors.email} />
           </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={invite.allowExternalDomain}
+              onChange={(e) => setInvite({ ...invite, allowExternalDomain: e.target.checked })}
+            />
+            Allow an email outside our company domain
+          </label>
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setInviteModalOpen(false)}
-              className={secondaryButton}
-            >
+            <button type="button" onClick={() => setInviteOpen(false)} className={secondaryButton}>
               Cancel
             </button>
-            <button type="submit" className={primaryButton}>
-              Send invite
+            <button type="submit" className={primaryButton} disabled={inviteMutation.isPending}>
+              {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
             </button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={toDeactivate !== null}
+        onClose={() => setToDeactivate(null)}
+        onConfirm={() => {
+          if (toDeactivate) deactivateMutation.mutate(toDeactivate);
+        }}
+        title={`Deactivate ${toDeactivate?.fullName ?? 'teammate'}?`}
+        variant="danger"
+        confirmText="Deactivate"
+        isLoading={deactivateMutation.isPending}
+        error={
+          deactivateMutation.isError
+            ? messageFrom(deactivateMutation.error, 'Could not deactivate this teammate.')
+            : null
+        }
+        description={
+          <div className="space-y-3">
+            <p>
+              They will be signed out everywhere and lose access to your company right away. You can
+              reactivate them later.
+            </p>
+            {reassignCandidates.length > 0 ? (
+              <div>
+                <label htmlFor="reassign" className={label}>
+                  Hand over their draft and open job postings to
+                </label>
+                <select
+                  id="reassign"
+                  className={input}
+                  value={reassignTo}
+                  onChange={(e) => setReassignTo(e.target.value)}
+                >
+                  <option value="">Choose a teammate (optional)</option>
+                  {reassignCandidates.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </div>
+        }
+      />
     </div>
   );
 }

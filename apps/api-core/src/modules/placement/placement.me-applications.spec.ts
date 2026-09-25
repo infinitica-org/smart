@@ -80,11 +80,25 @@ describe('CN-T06 list my applications', () => {
       include: {
         opening: {
           select: {
+            companyId: true,
             companyName: true,
             roleTitle: true,
             location: true,
             employmentType: true,
             domainCode: true,
+            company: {
+              select: {
+                verificationStatus: true,
+                deactivatedAt: true,
+                heldAt: true,
+                verifications: {
+                  where: { reviewedAt: { not: null } },
+                  orderBy: { reviewedAt: 'desc' },
+                  take: 1,
+                  select: { reviewedAt: true },
+                },
+              },
+            },
           },
         },
         student: {

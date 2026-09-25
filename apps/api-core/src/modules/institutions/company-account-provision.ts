@@ -71,6 +71,7 @@ export async function provisionCompanyRepresentative(
   }
 
   const activationEmail = await mintPendingCompanyInvitation(tx, {
+    companyId: params.companyId,
     userId,
     email,
     fullName,
@@ -127,6 +128,7 @@ async function resolveOrCreateCompanyUser(
         fullName: params.fullName,
         role: DB_USER_ROLE.COMPANY as PrismaUserRole,
         companyId: params.companyId,
+        companyRole: 'OWNER',
         institutionId: null,
         emailVerified: true,
         passwordHash: null,
@@ -159,6 +161,7 @@ async function resolveOrCreateCompanyUser(
 async function mintPendingCompanyInvitation(
   tx: Prisma.TransactionClient,
   params: {
+    companyId: string;
     userId: string;
     email: string;
     fullName: string;
@@ -195,6 +198,8 @@ async function mintPendingCompanyInvitation(
       fullName: params.fullName,
       role: DB_USER_ROLE.COMPANY as PrismaUserRole,
       institutionId: null,
+      companyId: params.companyId,
+      companyRole: 'OWNER',
       userId: params.userId,
       tokenHash: hash,
       status: 'PENDING',

@@ -1,11 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Building2, Pencil, Globe, MapPin, ShieldCheck, Mail, Check } from 'lucide-react';
-import { useCompanyAccount } from '@/lib/use-company-account';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Building2, Check, Plus, X } from 'lucide-react';
+import {
+  COMPANY_ABOUT_MAX_LENGTH,
+  COMPANY_EMPLOYEE_COUNT_LABELS,
+  COMPANY_INDUSTRIES,
+  MAX_ADDITIONAL_LOCATIONS,
+  type CompanyProfile,
+} from '@smart/contracts';
+import {
+  Alert,
+  ErrorState,
+  FormErrorSummary,
+  FormMessage,
+  LoadingState,
+  VerifiedBadge,
+} from '@smart/ui';
+import { api } from '@/lib/api';
+import {
+  EMPLOYEE_COUNT_OPTIONS,
+  SOCIAL_NETWORKS,
+  createKeyTracker,
+  fieldErrorsFromError,
+  isVersionConflict,
+  toFormState,
+  toUpdateBody,
+  validateProfileBody,
+  type ProfileFormState,
+} from '@/lib/company-profile-form';
 import { buildAboutDraft } from '../../../lib/about-template';
 import { LocationInput } from '../../../components/location-input';
-import { Modal, PageHeader } from '../../../components/ui';
+import { PageHeader } from '../../../components/ui';
 import {
   card,
   input,
@@ -16,290 +43,430 @@ import {
   textarea,
 } from '../../../lib/ui';
 
-export default function CompanyProfilePage() {
-  const { data: account } = useCompanyAccount();
+export const COMPANY_PROFILE_QUERY_KEY = ['employer', 'company'] as const;
 
-  const [company, setCompany] = useState<{
-    name: string;
-    email: string;
-    domain?: string;
-    industry?: string;
-    size?: string;
-    location?: string;
-    website?: string;
-    about?: string;
-  }>({
-    name: 'SMART Pilot Employer',
-    email: 'company@smart.local',
-    industry: 'Software & Technology',
-    size: '100–500 employees',
-    location: 'Bengaluru, India · Remote',
-    website: 'https://smart.local',
-    about:
-      'We are an innovative engineering company hiring verified graduates and student talent based on proctored SMART competency credentials.',
+const VERIFY_BASE_URL = process.env.NEXT_PUBLIC_VERIFY_URL ?? 'http://localhost:3004';
+
+export default function CompanyProfilePage() {
+  const queryClient = useQueryClient();
+  const profileQuery = useQuery<CompanyProfile>({
+    queryKey: COMPANY_PROFILE_QUERY_KEY,
+    queryFn: () => api.employer.getCompany(),
+    retry: false,
   });
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState(company);
-  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState<ProfileFormState | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [banner, setBanner] = useState<{
+    tone: 'success' | 'warning' | 'danger';
+    text: string;
+  } | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const keys = useRef(createKeyTracker());
 
+  const profile = profileQuery.data;
+
+  // (Re)load the form whenever a new server version arrives.
   useEffect(() => {
-    if (account) {
-      setCompany((prev) => ({
-        ...prev,
-        name: account.companyName || prev.name,
-        email: account.email || prev.email,
-        industry: account.companyIndustry || prev.industry,
-        location: account.companyLocation || prev.location,
-        website: account.companyWebsite || prev.website,
-      }));
-      setEditForm((prev) => ({
-        ...prev,
-        name: account.companyName || prev.name,
-        email: account.email || prev.email,
-        industry: account.companyIndustry || prev.industry,
-        location: account.companyLocation || prev.location,
-        website: account.companyWebsite || prev.website,
-      }));
+    if (profile) {
+      setForm(toFormState(profile));
+      setLogoPreview(profile.logoUrl);
     }
-  }, [account]);
+  }, [profile]);
 
-  function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setCompany(editForm);
-    setSaved(true);
-    setEditOpen(false);
-    setTimeout(() => setSaved(false), 4000);
+  const save = useMutation({
+    mutationFn: async (state: ProfileFormState) => {
+      if (!profile) throw new Error('Profile not loaded');
+      const body = toUpdateBody(state);
+      const key = keys.current.keyFor(JSON.stringify({ body, version: profile.version }));
+      return api.employer.updateCompany({ body, version: profile.version, idempotencyKey: key });
+    },
+    onSuccess: (updated) => {
+      keys.current.reset();
+      queryClient.setQueryData(COMPANY_PROFILE_QUERY_KEY, updated);
+      setErrors({});
+      setBanner({ tone: 'success', text: 'Company profile saved.' });
+    },
+    onError: (error) => {
+      const fieldErrors = fieldErrorsFromError(error);
+      if (fieldErrors) {
+        setErrors(fieldErrors);
+        setBanner(null);
+      } else if (isVersionConflict(error)) {
+        setBanner({
+          tone: 'warning',
+          text: 'Someone else changed this profile. Reload the latest version before saving again.',
+        });
+      } else {
+        setBanner({ tone: 'danger', text: 'Could not save the profile. Please try again.' });
+      }
+    },
+  });
+
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => api.employer.uploadLogo(file),
+    onSuccess: (uploaded) => {
+      setForm((prev) => (prev ? { ...prev, logoFileId: uploaded.logoFileId } : prev));
+      setLogoPreview(uploaded.previewUrl);
+    },
+    onError: () =>
+      setErrors((prev) => ({ ...prev, logoFileId: 'Upload a JPG or PNG of 2MB or less.' })),
+  });
+
+  const preview = useMemo(() => (form && profile ? { form, profile } : null), [form, profile]);
+
+  if (profileQuery.isPending) {
+    return (
+      <div className={pageStack}>
+        <LoadingState message="Loading your company profile…" />
+      </div>
+    );
   }
+
+  if (profileQuery.isError || !profile || !form || !preview) {
+    return (
+      <div className={pageStack}>
+        <ErrorState
+          title="Could not load the company profile"
+          message="Check your connection and try again."
+          onRetry={() => void profileQuery.refetch()}
+        />
+      </div>
+    );
+  }
+
+  const set = <K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) => {
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const { [key]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!form) return;
+    const clientErrors = validateProfileBody(toUpdateBody(form));
+    setErrors(clientErrors);
+    if (Object.keys(clientErrors).length > 0) return;
+    setBanner(null);
+    save.mutate(form);
+  }
+
+  const sizeLabel = form.employeeCount
+    ? `${COMPANY_EMPLOYEE_COUNT_LABELS[form.employeeCount as keyof typeof COMPANY_EMPLOYEE_COUNT_LABELS]} employees`
+    : '';
 
   return (
     <div className={pageStack}>
       <PageHeader
         title="Company Profile"
-        description="Public employer brand, verified credentials, and organizational presence."
+        description="What students see on your public company page."
         actions={
-          <button
-            type="button"
-            onClick={() => {
-              setEditForm(company);
-              setEditOpen(true);
-            }}
-            className={primaryButton}
-          >
-            <Pencil className="size-3.5" aria-hidden /> Edit Profile
-          </button>
+          profile.isVerified ? (
+            <a
+              href={`${VERIFY_BASE_URL}/companies/${profile.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={secondaryButton}
+            >
+              View public page
+            </a>
+          ) : null
         }
       />
 
-      {saved ? (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-800 animate-fadeIn">
-          <Check className="size-4 text-emerald-600" />
-          Company profile details updated successfully.
-        </div>
+      {!profile.isVerified ? (
+        <Alert tone="info" title="Your public page is not live yet">
+          Your company page becomes public once SMART verifies your company. You can prepare it now.
+        </Alert>
+      ) : null}
+      {banner ? (
+        <Alert tone={banner.tone} role={banner.tone === 'danger' ? 'alert' : 'status'}>
+          <span className="flex flex-wrap items-center gap-3">
+            {banner.tone === 'success' ? <Check className="size-4" aria-hidden /> : null}
+            {banner.text}
+            {banner.tone === 'warning' ? (
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => {
+                  setBanner(null);
+                  void profileQuery.refetch();
+                }}
+              >
+                Reload latest
+              </button>
+            ) : null}
+          </span>
+        </Alert>
       ) : null}
 
-      <section className={`${card} !p-0 overflow-hidden bg-white`}>
-        {/* Ambient Dark/Emerald Pattern Banner */}
-        <div
-          aria-hidden
-          className="relative h-36 w-full overflow-hidden bg-gradient-to-r from-zinc-950 via-zinc-900 to-emerald-950"
-        >
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
-          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-emerald-500/10 to-transparent" />
-        </div>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <form onSubmit={handleSubmit} className={`${card} space-y-4`} noValidate>
+          <FormErrorSummary errors={errors} />
 
-        {/* Profile Header Body */}
-        <div className="px-6 pb-6 pt-0 md:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-              {/* Overlapping Logo */}
-              <div className="-mt-10 shrink-0">
-                <span className="flex size-20 items-center justify-center rounded-2xl border-4 border-white bg-zinc-950 text-white shadow-md ring-1 ring-zinc-200/50">
-                  <Building2 className="size-9 text-emerald-400" aria-hidden />
-                </span>
-              </div>
-
-              {/* Title & Status Pills */}
-              <div className="pt-1 sm:pt-0">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="font-heading text-2xl font-bold tracking-tight text-zinc-950">
-                    {company.name}
-                  </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                    <ShieldCheck className="size-3.5 text-emerald-600" />
-                    Verified Employer
-                  </span>
-                </div>
-                <p className="mt-1 text-xs font-medium text-zinc-500">
-                  {company.industry} · {company.size} · {company.location}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEditForm(company);
-                setEditOpen(true);
-              }}
-              className={`${secondaryButton} shrink-0`}
-            >
-              <Pencil className="size-3.5" /> Edit Details
-            </button>
-          </div>
-        </div>
-
-        {/* Details & Metadata Grid */}
-        <div className="border-t border-zinc-100 px-6 py-6 md:px-8 space-y-6 bg-white">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              About Organization
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{company.about}</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 pt-4 border-t border-zinc-100 text-xs">
-            <div className="flex items-center gap-3 text-zinc-600 rounded-xl border border-zinc-200/70 bg-zinc-50/60 p-3.5 shadow-2xs">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-white border border-zinc-200/80 text-zinc-600 shrink-0">
-                <Mail className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="block text-[10px] uppercase font-bold text-zinc-400">
-                  Work Email
-                </span>
-                <span className="font-semibold text-zinc-900 truncate block">{company.email}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-zinc-600 rounded-xl border border-zinc-200/70 bg-zinc-50/60 p-3.5 shadow-2xs">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-white border border-zinc-200/80 text-zinc-600 shrink-0">
-                <Globe className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="block text-[10px] uppercase font-bold text-zinc-400">
-                  Website URL
-                </span>
-                <a
-                  href={
-                    company.website?.startsWith('http')
-                      ? company.website
-                      : `https://${company.website}`
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-zinc-900 hover:text-emerald-700 hover:underline truncate block"
-                >
-                  {company.website}
-                </a>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-zinc-600 rounded-xl border border-zinc-200/70 bg-zinc-50/60 p-3.5 shadow-2xs">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-white border border-zinc-200/80 text-zinc-600 shrink-0">
-                <MapPin className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="block text-[10px] uppercase font-bold text-zinc-400">
-                  Location / Mode
-                </span>
-                <span className="font-semibold text-zinc-900 truncate block">
-                  {company.location}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Edit Company Profile Modal */}
-      <Modal open={editOpen} title="Edit Company Profile" onClose={() => setEditOpen(false)}>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className={label}>Company Name</label>
+          <Field id="displayName" text="Company name" error={errors.displayName}>
             <input
-              type="text"
-              required
-              value={editForm.name}
-              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              id="displayName"
+              className={input}
+              value={form.displayName}
+              onChange={(e) => set('displayName', e.target.value)}
+            />
+          </Field>
+
+          <Field id="logo" text="Logo (JPG or PNG, max 2MB)" error={errors.logoFileId}>
+            <input
+              id="logo"
+              type="file"
+              accept="image/png,image/jpeg"
+              disabled={uploadLogo.isPending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadLogo.mutate(file);
+              }}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field id="industry" text="Industry" error={errors.industry}>
+              <select
+                id="industry"
+                className={input}
+                value={form.industry}
+                onChange={(e) => set('industry', e.target.value)}
+              >
+                <option value="">Select an industry</option>
+                {COMPANY_INDUSTRIES.map((industry) => (
+                  <option key={industry} value={industry}>
+                    {industry}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field id="employeeCount" text="Employees" error={errors.employeeCount}>
+              <select
+                id="employeeCount"
+                className={input}
+                value={form.employeeCount}
+                onChange={(e) => set('employeeCount', e.target.value)}
+              >
+                <option value="">Select a size</option>
+                {EMPLOYEE_COUNT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <Field id="headquarters" text="Headquarters" error={errors.headquarters}>
+            <LocationInput
+              id="headquarters"
+              value={form.headquarters}
+              onChange={(next) => set('headquarters', next)}
               className={input}
             />
-          </div>
+          </Field>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={label}>Industry</label>
-              <input
-                type="text"
-                value={editForm.industry}
-                onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })}
-                className={input}
-              />
-            </div>
-            <div>
-              <label className={label}>Company Size</label>
-              <select
-                value={editForm.size}
-                onChange={(e) => setEditForm({ ...editForm, size: e.target.value })}
-                className={input}
+          <div className="space-y-2">
+            <span className={label}>Additional locations</span>
+            {form.additionalLocations.map((location, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className="flex-1">
+                  <LocationInput
+                    value={location}
+                    onChange={(next) =>
+                      set(
+                        'additionalLocations',
+                        form.additionalLocations.map((l, i) => (i === index ? next : l)),
+                      )
+                    }
+                    className={input}
+                  />
+                  <FormMessage error={errors[`additionalLocations.${index}`]} />
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove location ${index + 1}`}
+                  className={secondaryButton}
+                  onClick={() =>
+                    set(
+                      'additionalLocations',
+                      form.additionalLocations.filter((_, i) => i !== index),
+                    )
+                  }
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              </div>
+            ))}
+            {form.additionalLocations.length < MAX_ADDITIONAL_LOCATIONS ? (
+              <button
+                type="button"
+                className={secondaryButton}
+                onClick={() => set('additionalLocations', [...form.additionalLocations, ''])}
               >
-                <option value="1–50 employees">1–50 employees</option>
-                <option value="50–100 employees">50–100 employees</option>
-                <option value="100–500 employees">100–500 employees</option>
-                <option value="500–2,000 employees">500–2,000 employees</option>
-                <option value="2,000+ employees">2,000+ employees</option>
-              </select>
-            </div>
+                <Plus className="size-4" aria-hidden /> Add location
+              </button>
+            ) : null}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={label}>Location / Headquarters</label>
-              <LocationInput
-                value={editForm.location ?? ''}
-                onChange={(next) => setEditForm({ ...editForm, location: next })}
-                className={input}
-              />
-            </div>
-            <div>
-              <label className={label}>Website URL</label>
-              <input
-                type="text"
-                value={editForm.website}
-                onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                className={input}
-              />
-            </div>
-          </div>
+          <Field id="website" text="Website" error={errors.website}>
+            <input
+              id="website"
+              className={input}
+              placeholder="https://"
+              value={form.website}
+              onChange={(e) => set('website', e.target.value)}
+            />
+          </Field>
 
           <div>
             <div className="flex items-center justify-between">
-              <label className={label}>About Organization</label>
+              <label htmlFor="about" className={label}>
+                About the company
+              </label>
               <button
                 type="button"
                 className="text-xs font-semibold text-blue-700 hover:underline"
-                onClick={() => setEditForm({ ...editForm, about: buildAboutDraft(editForm) })}
+                onClick={() =>
+                  set(
+                    'about',
+                    buildAboutDraft({
+                      name: form.displayName,
+                      industry: form.industry,
+                      size: sizeLabel,
+                      location: form.headquarters,
+                    }),
+                  )
+                }
               >
                 Draft from my details
               </button>
             </div>
             <textarea
-              rows={4}
-              value={editForm.about}
-              onChange={(e) => setEditForm({ ...editForm, about: e.target.value })}
+              id="about"
+              rows={5}
               className={textarea}
+              value={form.about}
+              onChange={(e) => set('about', e.target.value)}
             />
+            <div className="mt-1 flex justify-between text-xs text-[var(--ds-text-muted)]">
+              <FormMessage error={errors.about} />
+              <span>
+                {form.about.length}/{COMPANY_ABOUT_MAX_LENGTH}
+              </span>
+            </div>
           </div>
 
+          <Field id="benefits" text="Benefits (one per line)" error={errors.benefits}>
+            <textarea
+              id="benefits"
+              rows={3}
+              className={textarea}
+              value={form.benefitsText}
+              onChange={(e) => set('benefitsText', e.target.value)}
+            />
+          </Field>
+
+          <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <legend className={label}>Social links</legend>
+            {SOCIAL_NETWORKS.map((network) => (
+              <Field
+                key={network}
+                id={`social-${network}`}
+                text={network.charAt(0).toUpperCase() + network.slice(1)}
+                error={errors[`socialLinks.${network}`]}
+              >
+                <input
+                  id={`social-${network}`}
+                  className={input}
+                  placeholder="https://"
+                  value={form.social[network]}
+                  onChange={(e) => set('social', { ...form.social, [network]: e.target.value })}
+                />
+              </Field>
+            ))}
+          </fieldset>
+
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setEditOpen(false)} className={secondaryButton}>
-              Cancel
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => {
+                setForm(toFormState(profile));
+                setLogoPreview(profile.logoUrl);
+                setErrors({});
+              }}
+            >
+              Reset
             </button>
-            <button type="submit" className={primaryButton}>
-              Save Profile
+            <button type="submit" className={primaryButton} disabled={save.isPending}>
+              {save.isPending ? 'Saving…' : 'Save profile'}
             </button>
           </div>
         </form>
-      </Modal>
+
+        <aside aria-label="Live preview" className={`${card} h-fit space-y-3 lg:sticky lg:top-4`}>
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--ds-text-muted)]">
+            Live preview
+          </p>
+          <div className="flex items-start gap-3">
+            {logoPreview ? (
+              // Signed storage URL; not routed through next/image.
+              <img src={logoPreview} alt="" className="size-14 rounded-xl border object-cover" />
+            ) : (
+              <span className="flex size-14 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
+                <Building2 className="size-7" aria-hidden />
+              </span>
+            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold">{preview.form.displayName || 'Company name'}</h2>
+                <VerifiedBadge verified={profile.isVerified} verifiedAt={profile.verifiedAt} />
+              </div>
+              <p className="text-xs text-[var(--ds-text-muted)]">
+                {[preview.form.industry, sizeLabel, preview.form.headquarters]
+                  .filter(Boolean)
+                  .join(' · ') || 'Industry · size · location'}
+              </p>
+            </div>
+          </div>
+          <p className="whitespace-pre-line text-sm leading-relaxed">
+            {preview.form.about || 'Your company description appears here.'}
+          </p>
+          {preview.form.additionalLocations.filter(Boolean).length > 0 ? (
+            <p className="text-xs text-[var(--ds-text-muted)]">
+              Also in: {preview.form.additionalLocations.filter(Boolean).join(', ')}
+            </p>
+          ) : null}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  id,
+  text,
+  error,
+  children,
+}: {
+  id: string;
+  text: string;
+  error?: string | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className={label}>
+        {text}
+      </label>
+      {children}
+      <FormMessage error={error} />
     </div>
   );
 }

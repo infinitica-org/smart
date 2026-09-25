@@ -33,7 +33,7 @@ export function redirectForRole(
 ): void {
   const target =
     returnToForRole(role, returnTo ?? null, portalOrigins) ??
-    portalHomeForRole('STUDENT', portalOrigins) ??
+    portalHomeForRole(role, portalOrigins) ??
     studentUrl;
   window.location.href = buildPortalRedirectUrl(target, accessToken);
 }

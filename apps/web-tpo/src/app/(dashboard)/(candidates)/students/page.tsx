@@ -1,5 +1,6 @@
 'use client';
 
+import { MessageStudentButton } from '../../../../components/message-student-button';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Clock, ChevronRight, Users, ShieldCheck } from 'lucide-react';
 
@@ -403,18 +404,24 @@ export default function CandidatesPage() {
                       </td>
 
                       <td className="px-4 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudent(student)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900 shadow-2xs transition-all hover:bg-zinc-50 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-                        >
-                          View Details
-                          <ChevronRight
-                            className="size-3 text-zinc-400"
-                            strokeWidth={2}
-                            aria-hidden
+                        <div className="flex items-center justify-end gap-2">
+                          <MessageStudentButton
+                            studentId={student.userId}
+                            studentName={student.fullName}
                           />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudent(student)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900 shadow-2xs transition-all hover:bg-zinc-50 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                          >
+                            View Details
+                            <ChevronRight
+                              className="size-3 text-zinc-400"
+                              strokeWidth={2}
+                              aria-hidden
+                            />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

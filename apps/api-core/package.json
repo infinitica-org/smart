@@ -21,6 +21,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:jobs": "tsx prisma/seed-jobs.ts",
     "db:seed:load-test": "tsx prisma/seed-load-test.ts",
     "match:e2e": "tsx scripts/run-match-engine-e2e.ts",
     "db:seed:project-defense-demo": "tsx prisma/seed-project-defense-demo.ts",

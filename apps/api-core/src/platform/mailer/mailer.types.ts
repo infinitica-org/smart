@@ -24,7 +24,13 @@ export type EmailTemplateName =
   /** Phase 6: company representative password setup after SA approval. */
   | 'company-portal-invite'
   /** EMP-01 #348: reviewer rejected / requested changes; link back into the application. */
-  | 'company-verification-resubmit';
+  | 'company-verification-resubmit'
+  /** APP-01: confirmation to the student right after they apply. */
+  | 'application-submitted'
+  /** APP-01: a company member is told a student applied to their job. */
+  | 'application-received'
+  /** APP-01: a company member is told an applicant withdrew. */
+  | 'application-withdrawn';
 
 export interface CompanyOnboardingEmailVerifyData {
   readonly fullName: string;
@@ -53,6 +59,21 @@ export interface OpportunityEmailData {
   readonly companyName: string;
   readonly roleTitle: string;
   readonly applicationsUrl: string;
+}
+
+export interface ApplicationSubmittedEmailData {
+  readonly fullName: string;
+  readonly companyName: string;
+  readonly roleTitle: string;
+  readonly referenceNumber: string;
+  readonly applicationsUrl: string;
+}
+
+export interface EmployerApplicantEmailData {
+  readonly recipientName: string;
+  readonly candidateName: string;
+  readonly roleTitle: string;
+  readonly applicantsUrl: string;
 }
 
 export interface StageChangeEmailData {
@@ -119,6 +140,8 @@ export type EmailTemplateData =
   | PasswordResetEmailData
   | OpportunityEmailData
   | StageChangeEmailData
+  | ApplicationSubmittedEmailData
+  | EmployerApplicantEmailData
   | VerificationEmailData
   | WorkExperienceVerifierInviteEmailData
   | WorkExperienceVerifierReminderEmailData
