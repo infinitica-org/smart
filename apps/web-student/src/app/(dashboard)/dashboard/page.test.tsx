@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import type { StudentDashboardSummary } from '@smart/contracts';
 import { renderWithQueryClient } from '@/test/render-with-query-client';
@@ -53,6 +53,11 @@ function renderPage() {
 }
 
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    getDashboard.mockReset();
+    getDashboard.mockResolvedValue(summary());
+  });
+
   it('renders student dashboard hero, verification banner, stat cards, top matches, and activity feed', async () => {
     renderWithQueryClient(<DashboardPage />);
 

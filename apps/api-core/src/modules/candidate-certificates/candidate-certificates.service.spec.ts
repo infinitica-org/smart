@@ -299,6 +299,45 @@ describe('CandidateCertificatesService', () => {
     );
   });
 
+  it('logs the endorser being handed the certificate file (S6-VV-104)', async () => {
+    const { prisma, auditPublisher, service } = setup();
+    const endorsementId = randomUUID();
+    prisma.certificateEndorsement.findUnique.mockResolvedValue({
+      id: endorsementId,
+      status: 'PENDING',
+      expiresAt: new Date('2100-01-01T00:00:00.000Z'),
+      candidateCertificate: { ...baseCertificateRow(), candidate: { fullName: 'Ada Lovelace' } },
+    });
+
+    await service.getEndorsementByToken('some-token');
+
+    expect(auditPublisher.record).toHaveBeenCalledWith({
+      actorId: null,
+      action: 'evidence.accessed',
+      resourceType: 'candidate_certificate',
+      resourceId: certificateId,
+      reasonCode: 'endorsement_link',
+      metadata: { subjectId: candidateId, endorsementId },
+    });
+  });
+
+  it('logs nothing when the certificate has no file to hand over', async () => {
+    const { prisma, auditPublisher, service } = setup();
+    prisma.certificateEndorsement.findUnique.mockResolvedValue({
+      id: randomUUID(),
+      status: 'PENDING',
+      expiresAt: new Date('2100-01-01T00:00:00.000Z'),
+      candidateCertificate: {
+        ...baseCertificateRow({ certificateFileUrl: null }),
+        candidate: { fullName: 'Ada Lovelace' },
+      },
+    });
+
+    await service.getEndorsementByToken('some-token');
+
+    expect(auditPublisher.record).not.toHaveBeenCalled();
+  });
+
   it('flags an expired-but-unresponded endorsement as expired', async () => {
     const { prisma, service } = setup();
     prisma.certificateEndorsement.findUnique.mockResolvedValue({

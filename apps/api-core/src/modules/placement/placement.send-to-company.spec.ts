@@ -48,6 +48,7 @@ function setup(
   options: {
     application?: unknown;
     attempt?: { passed: boolean | null; explanation: string | null } | null;
+    student?: { deactivatedAt: Date | null; heldAt: Date | null } | null;
   } = {},
 ) {
   const applicationRow =
@@ -58,6 +59,13 @@ function setup(
       : options.attempt;
 
   const prisma = {
+    user: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue(
+          options.student === undefined ? { deactivatedAt: null, heldAt: null } : options.student,
+        ),
+    },
     jobOpening: {
       findFirst: vi.fn().mockResolvedValue({ id: openingId }),
       findUnique: vi.fn().mockResolvedValue({ requiredSkills: [] }),
@@ -221,6 +229,19 @@ describe('AC-T06 send-to-company', () => {
     await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toMatchObject({
       constructor: UnprocessableEntityException,
     });
+    expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['deactivated', { deactivatedAt: new Date('2026-09-20T00:00:00.000Z'), heldAt: null }],
+    ['held', { deactivatedAt: null, heldAt: new Date('2026-09-20T00:00:00.000Z') }],
+  ])('refuses to send a %s student to the company (S6-VV-148)', async (_label, student) => {
+    const { controller, prisma, outbox } = setup({ student });
+
+    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toMatchObject({
+      constructor: ConflictException,
+    });
+    expect(prisma.application.update).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 

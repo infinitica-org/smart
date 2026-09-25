@@ -488,12 +488,19 @@ export async function executeDefense() {
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  href={`/interviews/${item.projectId}/outcome`}
+                  className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+                >
+                  View outcome →
+                </Link>
+
                 <button
                   type="button"
                   onClick={() => setViewTranscriptTarget(item)}
                   className="text-xs font-semibold text-zinc-900 hover:underline dark:text-white"
                 >
-                  View transcript →
+                  Transcript
                 </button>
 
                 <button

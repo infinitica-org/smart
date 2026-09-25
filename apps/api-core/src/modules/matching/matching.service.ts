@@ -33,6 +33,11 @@ import { MATCH_RUN_QUEUE } from '../../platform/queue/queue.names.js';
 import { InstitutionsService } from '../institutions/institutions.service.js';
 import type { CompetencyStatus } from '@smart/contracts';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
+import {
+  EMPLOYER_VISIBLE_STUDENT_SQL,
+  filterEmployerVisibleStudentIds,
+  studentUnavailableToEmployers,
+} from '../../common/employer-visibility.js';
 import { QlixSmartAssessmentSchema } from '../evaluation/qlix-client.js';
 import { buildSkillCapabilityJob } from './job-profile.js';
 import {
@@ -54,6 +59,7 @@ import {
 } from './rules-ranker.js';
 import {
   PROFICIENCY_RANK,
+  SKILL_CAPABILITY_RANKER_VERSION,
   rankSkillCapabilityCandidates,
   type InferredCapabilityRow,
   type QlixCompetencyObservation,
@@ -151,9 +157,16 @@ function buildEligibleStudentsQuery(
     'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters' | 'openingEligibility'
   >,
 ): Prisma.Sql {
+  /**
+   * MAT-01 / I374: Exclusion of protected attributes from matching pipeline.
+   * Demographic fields (gender, caste, religion, age, disability, photo) are explicitly excluded
+   * from query conditions, ranking inputs, and scoring weights. Matching relies exclusively on
+   * verified competencies, proctored evaluation scores, and academic batch criteria.
+   */
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
     Prisma.sql`u.role = 'STUDENT'`,
+    EMPLOYER_VISIBLE_STUDENT_SQL,
     Prisma.sql`EXISTS (SELECT 1 FROM skill_claims sc_any WHERE sc_any.student_id = u.id AND sc_any.status = 'VERIFIED')`,
   ];
   if (request.batchIds.length) {
@@ -336,13 +349,32 @@ export class MatchingService {
       runId: run.id,
       jdId: run.jdId,
       status: run.status,
+      rankerVersion: SKILL_CAPABILITY_RANKER_VERSION,
       eligiblePoolCount: run.eligiblePoolCount,
       suggestedCount: run.suggestedCount,
       errorMessage: run.errorMessage,
       createdAt: run.createdAt.toISOString(),
       completedAt: run.completedAt?.toISOString() ?? null,
-      shortlist: run.resultSnapshot as ShortlistDto | null,
+      shortlist: await this.withoutHiddenCandidates(run.resultSnapshot as ShortlistDto | null),
     });
+  }
+
+  /**
+   * S6-VV-148 — a stored shortlist was computed before any later deactivation
+   * or hold, so re-check visibility every time it is served.
+   */
+  private async withoutHiddenCandidates(
+    shortlist: ShortlistDto | null,
+  ): Promise<ShortlistDto | null> {
+    if (!shortlist) return null;
+    const visible = await filterEmployerVisibleStudentIds(
+      this.prisma,
+      shortlist.candidates.map((row) => row.studentId),
+    );
+    return {
+      ...shortlist,
+      candidates: shortlist.candidates.filter((row) => visible.has(row.studentId)),
+    };
   }
 
   async getCandidateFit(
@@ -362,6 +394,10 @@ export class MatchingService {
     }
     const shortlist = ShortlistDtoSchema.parse(run.resultSnapshot);
     const candidate = shortlist.candidates.find((row) => row.studentId === studentId);
+    if (candidate) {
+      const visible = await filterEmployerVisibleStudentIds(this.prisma, [studentId]);
+      if (!visible.has(studentId)) throw studentUnavailableToEmployers();
+    }
     if (!candidate) {
       throw new NotFoundException({
         error: 'not_found',
