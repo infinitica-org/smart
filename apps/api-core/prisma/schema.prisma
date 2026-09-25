@@ -490,6 +490,13 @@ model User {
   institutionsUpdated                  Institution[]                 @relation("InstitutionUpdatedBy")
   companiesCreated                     Company[]                     @relation("CompanyCreatedBy")
   companiesUpdated                     Company[]                     @relation("CompanyUpdatedBy")
+  evidenceSkillDisputes                EvidenceSkillDispute[]        @relation("StudentEvidenceSkillDisputes")
+  evidenceSkillDisputesReviewed        EvidenceSkillDispute[]        @relation("DisputeReviewer")
+  matchFeedbacksGiven                  MatchFeedback[]               @relation("MatchFeedbackUser")
+  matchFeedbacksReceived               MatchFeedback[]               @relation("MatchFeedbackStudent")
+  savedCandidatesCreated               SavedCandidate[]              @relation("SavedCandidatesCreated")
+  savedAsCandidate                     SavedCandidate[]              @relation("SavedCandidatesReceived")
+
 
 
 
@@ -1313,6 +1320,8 @@ model JobOpening {
 
   requiredSkills JobOpeningSkill[]
   applications   Application[]
+  matchFeedbacks MatchFeedback[]
+  savedCandidates SavedCandidate[]
 
   @@index([institutionId, status])
   @@index([companyId])
@@ -1352,6 +1361,8 @@ model MatchRun {
   /// PENDING | RUNNING | SUCCEEDED | FAILED — plain String, matching this repo's existing
   /// convention for job-status fields (e.g. ProfessionalCredential.status) rather than an enum.
   status             String      @default("PENDING")
+  /// I375 — ranker version that produced this run's snapshot; frozen at creation.
+  rankerVersion      String?     @map("ranker_version")
   errorMessage       String?     @map("error_message")
   eligiblePoolCount  Int?        @map("eligible_pool_count")
   suggestedCount     Int?        @map("suggested_count")
@@ -1975,6 +1986,7 @@ model EvidenceRecord {
   claimLinks     SkillClaimEvidenceLink[]
   contradictions EvidenceContradiction[]
   versions       EvidenceRecordVersion[]
+  disputes       EvidenceSkillDispute[]
 
   @@index([studentId, evidenceType])
   @@index([studentId, verificationStatus])
@@ -2234,4 +2246,69 @@ model ProfileView {
   @@index([studentId, createdAt])
   @@index([studentId, viewerId, createdAt])
   @@map("profile_views")
+}
+
+/// I319 — student disputes an incorrect or unfair evidence-to-skill inference.
+model EvidenceSkillDispute {
+  id         String    @id @default(uuid()) @db.Uuid
+  studentId  String    @map("student_id") @db.Uuid
+  evidenceId String    @map("evidence_id") @db.Uuid
+  skillCode  String    @map("skill_code")
+  reason     String    @db.Text
+  status     String    @default("UNDER_REVIEW")
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewerId String?   @map("reviewer_id") @db.Uuid
+  reviewNote String?   @db.Text @map("review_note")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  student  User           @relation("StudentEvidenceSkillDisputes", fields: [studentId], references: [id], onDelete: Cascade)
+  evidence EvidenceRecord @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  reviewer User?          @relation("DisputeReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([evidenceId])
+  @@index([status])
+  @@map("evidence_skill_disputes")
+}
+
+/// I377 / I378 — student and employer feedback on candidate/opening match quality.
+model MatchFeedback {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  openingId         String?   @map("opening_id") @db.Uuid
+  studentId         String?   @map("student_id") @db.Uuid
+  runId             String?   @map("run_id") @db.Uuid
+  targetType        String    @default("STUDENT") @map("target_type")
+  rating            String
+  feedbackText      String?   @db.Text @map("feedback_text")
+  irrelevantReasons String[]  @default([]) @map("irrelevant_reasons")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User        @relation("MatchFeedbackUser", fields: [userId], references: [id], onDelete: Cascade)
+  opening JobOpening? @relation(fields: [openingId], references: [id], onDelete: SetNull)
+  student User?       @relation("MatchFeedbackStudent", fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([openingId])
+  @@index([studentId])
+  @@map("match_feedback")
+}
+
+/// I401 — employer bookmarked/saved candidate profiles.
+model SavedCandidate {
+  id        String   @id @default(uuid()) @db.Uuid
+  savedBy   String   @map("saved_by") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  openingId String?  @map("opening_id") @db.Uuid
+  note      String?  @db.Text
+  savedAt   DateTime @default(now()) @map("saved_at") @db.Timestamptz(6)
+
+  saver   User        @relation("SavedCandidatesCreated", fields: [savedBy], references: [id], onDelete: Cascade)
+  student User        @relation("SavedCandidatesReceived", fields: [studentId], references: [id], onDelete: Cascade)
+  opening JobOpening? @relation(fields: [openingId], references: [id], onDelete: SetNull)
+
+  @@unique([savedBy, studentId, openingId])
+  @@index([savedBy])
+  @@index([studentId])
+  @@map("saved_candidates")
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { env } from '../../platform/config/env.js';
 import type { QlixSmartContext } from './qlix-smart-context.js';
@@ -89,6 +89,14 @@ export class QlixClient {
 
   async submitCheck(input: QlixSubmitInput): Promise<{ checkId: string }> {
     if (!this.isConfigured()) {
+      if (env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException('QLIX plagiarism service is not configured');
+      }
+      if (!env.ENABLE_QLIX_STUB && env.NODE_ENV !== 'test') {
+        throw new ServiceUnavailableException(
+          'QLIX plagiarism service is not configured. Set QLIX_API_KEY or ENABLE_QLIX_STUB=true for local development.',
+        );
+      }
       return { checkId: `stub-${input.idempotencyKey.slice(0, 40)}` };
     }
     const body: Record<string, unknown> = {

@@ -46,6 +46,15 @@ export function SkillLevelExplanationPanel({ skillCode }: { skillCode: string })
     ) : null;
   }
 
+  const conclusions = [
+    { key: 'verified', label: 'Verified record', value: data.verifiedVsAi.verified },
+    { key: 'assessment', label: 'Assessment', value: data.verifiedVsAi.assessmentSupported },
+    { key: 'inferred', label: 'AI inference', value: data.verifiedVsAi.evidenceInferred },
+  ].filter(
+    (entry): entry is { key: string; label: string; value: NonNullable<typeof entry.value> } =>
+      entry.value != null,
+  );
+
   return (
     <section
       className="flex flex-col gap-4"
@@ -72,6 +81,45 @@ export function SkillLevelExplanationPanel({ skillCode }: { skillCode: string })
           {data.confidence.toLowerCase()}
         </p>
       </div>
+
+      {conclusions.length > 0 ? (
+        <ul className="flex flex-col gap-2 text-sm" data-testid="conclusion-breakdown">
+          {conclusions.map((entry) => (
+            <li key={entry.key} className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-foreground">{entry.label}</span>
+                <span
+                  className={[
+                    'rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-tight',
+                    entry.value.claimType === 'VERIFIED_FACT'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-purple-50 text-purple-700',
+                  ].join(' ')}
+                >
+                  {entry.value.claimType === 'VERIFIED_FACT' ? 'Verified fact' : 'AI inference'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {entry.value.proficiency ?? 'No level'} · {entry.value.summary}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {data.reportRefs.length > 0 ? (
+        <div className="text-xs text-muted-foreground" data-testid="report-refs">
+          <p className="font-medium text-foreground">Supporting records</p>
+          <ul className="mt-1 list-disc pl-4">
+            {data.reportRefs.slice(0, 6).map((ref) => (
+              <li key={`${ref.kind}-${ref.id}`}>
+                {ref.label}
+                {ref.promptRef ? ` · ${ref.promptRef}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {data.competencyRows.length > 0 ? (
         <ul className="flex flex-col gap-2 text-sm">

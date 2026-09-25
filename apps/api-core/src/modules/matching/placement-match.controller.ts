@@ -1,14 +1,31 @@
-import { Body, Controller, HttpCode, Inject, Param, Post, Get, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Get,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
   MatchRequestSchema,
+  SaveCandidateRequestSchema,
+  SearchStudentsQuerySchema,
   SubmitMatchFeedbackRequestSchema,
   UuidSchema,
+  type CandidateMatchDto,
   type CreateMatchRunResponse,
+  type ListSavedCandidatesResponse,
   type MatchRunDto,
   type ShortlistDto,
   type MatchFeedbackResponse,
+  type MatchFeedbackSummaryDto,
+  type SavedCandidateDto,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -126,28 +143,83 @@ export class PlacementMatchController {
     @CurrentUser() user: RequestUser,
     @Body() body: unknown,
   ): Promise<MatchFeedbackResponse> {
-    const _payload = SubmitMatchFeedbackRequestSchema.parse(body);
-    return {
-      feedbackId: '00000000-0000-4000-8000-000000000000',
-      submittedAt: new Date().toISOString(),
-      status: 'RECORDED',
-    };
+    const payload = SubmitMatchFeedbackRequestSchema.parse(body);
+    return this.matching.recordMatchFeedback(user.sub, 'STUDENT', payload);
   }
 
   @Post('feedback/employer')
   @HttpCode(200)
-  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Employer/TPO provides feedback on match quality (I378).' })
   @ApiBearerAuth()
   async submitEmployerFeedback(
     @CurrentUser() user: RequestUser,
     @Body() body: unknown,
   ): Promise<MatchFeedbackResponse> {
-    const _payload = SubmitMatchFeedbackRequestSchema.parse(body);
-    return {
-      feedbackId: '00000000-0000-4000-8000-000000000000',
-      submittedAt: new Date().toISOString(),
-      status: 'RECORDED',
-    };
+    const payload = SubmitMatchFeedbackRequestSchema.parse(body);
+    return this.matching.recordMatchFeedback(user.sub, 'EMPLOYER', payload);
+  }
+
+  @Get('feedback/summary')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Aggregated match feedback metrics and satisfaction rate (I376).' })
+  @ApiBearerAuth()
+  async getFeedbackSummary(
+    @Query('openingId') openingId?: string,
+    @Query('targetType') targetType?: 'STUDENT' | 'EMPLOYER',
+  ): Promise<MatchFeedbackSummaryDto> {
+    return this.matching.getMatchFeedbackSummary({ openingId, targetType });
+  }
+
+  @Get('students/search')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({
+    summary: 'Search assessed student candidates with multidimensional filters (I399).',
+  })
+  @ApiBearerAuth()
+  async searchStudents(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ): Promise<CandidateMatchDto[]> {
+    const parsed = SearchStudentsQuerySchema.parse(query);
+    return this.matching.searchStudents(user, parsed);
+  }
+
+  @Get('saved-candidates')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'List bookmarked candidate profiles (I401).' })
+  @ApiBearerAuth()
+  async listSavedCandidates(
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListSavedCandidatesResponse> {
+    return this.matching.listSavedCandidates(user.sub);
+  }
+
+  @Post('saved-candidates')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Bookmark a candidate profile (I401).' })
+  @ApiBearerAuth()
+  async saveCandidate(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<SavedCandidateDto> {
+    const payload = SaveCandidateRequestSchema.parse(body);
+    return this.matching.saveCandidate(user.sub, payload);
+  }
+
+  @Delete('saved-candidates/:studentId')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Remove a bookmarked candidate profile (I401).' })
+  @ApiBearerAuth()
+  async removeSavedCandidate(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+  ): Promise<{ success: boolean }> {
+    return this.matching.removeSavedCandidate(user.sub, UuidSchema.parse(studentId));
   }
 }

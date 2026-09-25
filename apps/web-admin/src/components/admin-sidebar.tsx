@@ -27,6 +27,8 @@ const primaryNav: NavItem[] = [
 ];
 
 const secondaryNav: NavItem[] = [
+  { name: 'Skill disputes', href: '/admin/skills/disputes', icon: ShieldAlert, dot: true },
+  { name: 'AI Governance', href: '/admin/ai-governance', icon: Bot },
   { name: 'Audit log', href: '/admin/audit', icon: ScrollText },
   { name: 'Support tool', href: '/admin/support', icon: HelpCircle },
   { name: 'Health & monitoring', href: '/admin/health', icon: HeartPulse },
@@ -34,6 +36,7 @@ const secondaryNav: NavItem[] = [
 
 import {
   BarChart3,
+  Bot,
   Building2,
   CheckCircle2,
   GraduationCap,

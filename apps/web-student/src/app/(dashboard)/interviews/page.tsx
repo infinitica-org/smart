@@ -2,21 +2,18 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Video,
   Mic,
   Camera,
-  Clock,
   ArrowRight,
   ExternalLink,
   Code2,
   X,
   RotateCcw,
-  Bot,
-  User,
   ShieldCheck,
   Play,
-  FileCode,
   Plus,
 } from 'lucide-react';
 import { cn } from '@smart/ui';
@@ -37,12 +34,13 @@ export interface DefenseInterviewSession {
     duration: string;
     scorePercent: number;
     skillsAffected: string[];
-    transcript: { speaker: 'AI' | 'Student'; text: string; timestamp: string }[];
+    transcript?: { speaker: 'AI' | 'Student'; text: string; timestamp: string }[];
     retakeDays?: number;
   };
 }
 
 export default function InterviewsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'NOT_STARTED' | 'COMPLETED'>('NOT_STARTED');
@@ -52,20 +50,15 @@ export default function InterviewsPage() {
   const [cameraChecked, setCameraChecked] = useState(true);
   const [micChecked, setMicChecked] = useState(true);
 
-  // Active Interview Session State
-  const [activeSession, setActiveSession] = useState<DefenseInterviewSession | null>(null);
-  const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [currentAiQuestionIdx, setCurrentAiQuestionIdx] = useState(0);
+  const handleStartPreCheck = (item: DefenseInterviewSession) => {
+    setPreCheckTarget(item);
+  };
 
-  // View Transcript Modal State
-  const [viewTranscriptTarget, setViewTranscriptTarget] = useState<DefenseInterviewSession | null>(
-    null,
-  );
-
-  // Completed defense store (persisted in local state per session)
-  const [completedSessions, setCompletedSessions] = useState<
-    Record<string, DefenseInterviewSession['completedDetails']>
-  >({});
+  const handleBeginInterview = () => {
+    if (preCheckTarget) {
+      router.push(`/profile/projects/${preCheckTarget.projectId}/defense`);
+    }
+  };
 
   const loadProjects = async () => {
     setLoading(true);
@@ -85,30 +78,17 @@ export default function InterviewsPage() {
 
   const interviews: DefenseInterviewSession[] = useMemo(() => {
     return projects.map((proj) => {
-      const isDefended =
-        proj.interviewStatus === 'COMPLETED' || Boolean(completedSessions[proj.projectId]);
-      const completedInfo =
-        completedSessions[proj.projectId] ||
-        (proj.interviewStatus === 'COMPLETED'
-          ? {
-              date: 'Verified',
-              duration: '12 min 45 sec',
-              scorePercent: proj.report?.score ? Math.round(proj.report.score) : 92,
-              skillsAffected: ['Project Architecture Verified', 'Implementation Defended'],
-              transcript: [
-                {
-                  speaker: 'AI' as const,
-                  text: 'Can you walk through the modular separation and design patterns used in this project?',
-                  timestamp: '00:30',
-                },
-                {
-                  speaker: 'Student' as const,
-                  text: 'The core business logic is encapsulated in isolated services with dependency injection for testability.',
-                  timestamp: '01:15',
-                },
-              ],
-            }
-          : undefined);
+      const isDefended = proj.interviewStatus === 'COMPLETED';
+      const completedInfo = isDefended
+        ? {
+            date: proj.interviewCompletedAt
+              ? new Date(proj.interviewCompletedAt).toLocaleDateString()
+              : 'Verified',
+            duration: '15 min',
+            scorePercent: proj.report?.score ? Math.round(proj.report.score) : 90,
+            skillsAffected: ['Project Architecture Defended', 'Technical Problem-solving Verified'],
+          }
+        : undefined;
 
       return {
         id: `int-${proj.projectId}`,
@@ -121,198 +101,10 @@ export default function InterviewsPage() {
         completedDetails: completedInfo,
       };
     });
-  }, [projects, completedSessions]);
-
-  const AI_QUESTIONS = [
-    'Walk me through the architecture of this project. What were the hardest design decisions you made?',
-    'If traffic to this system spiked by 100x overnight, what would be the first bottleneck to break, and how would you resolve it?',
-    'Explain how you structured your error handling, edge cases, and automated test coverage.',
-  ];
-
-  useEffect(() => {
-    if (!activeSession) return;
-    const interval = setInterval(() => {
-      setSessionSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [activeSession]);
-
-  const formatDuration = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins} min ${s < 10 ? '0' : ''}${s} sec`;
-  };
-
-  const handleStartPreCheck = (item: DefenseInterviewSession) => {
-    setPreCheckTarget(item);
-    setCameraChecked(true);
-    setMicChecked(true);
-  };
-
-  const handleBeginInterview = () => {
-    if (!preCheckTarget) return;
-    setActiveSession(preCheckTarget);
-    setPreCheckTarget(null);
-    setSessionSeconds(0);
-    setCurrentAiQuestionIdx(0);
-  };
-
-  const handleEndInterview = async () => {
-    if (!activeSession) return;
-
-    const completedDetails: DefenseInterviewSession['completedDetails'] = {
-      date: 'Just now',
-      duration: formatDuration(sessionSeconds),
-      scorePercent: 94,
-      skillsAffected: ['Project Architecture Defended', 'Technical Problem-solving Verified'],
-      transcript: [
-        {
-          speaker: 'AI',
-          text: AI_QUESTIONS[0] ?? 'Can you walk through the system design?',
-          timestamp: '00:15',
-        },
-        {
-          speaker: 'Student',
-          text: 'Explained modular component separation, async synchronization, and resilient retry logic.',
-          timestamp: '01:20',
-        },
-        {
-          speaker: 'AI',
-          text: AI_QUESTIONS[1] ?? 'How do you handle scaling and error states?',
-          timestamp: '02:40',
-        },
-        {
-          speaker: 'Student',
-          text: 'Detailed database indexing, connection pooling, and distributed cache invalidation strategies.',
-          timestamp: '03:50',
-        },
-      ],
-    };
-
-    setCompletedSessions((prev) => ({
-      ...prev,
-      [activeSession.projectId]: completedDetails,
-    }));
-
-    try {
-      // Record project defense in live API if endpoint exists
-      await (
-        api.projects as Record<string, ((...args: unknown[]) => Promise<unknown>) | undefined>
-      ).update?.(activeSession.projectId, {
-        interviewStatus: 'COMPLETED',
-      });
-      await loadProjects();
-    } catch {
-      // Handled
-    }
-
-    setActiveSession(null);
-    setActiveTab('COMPLETED');
-  };
+  }, [projects]);
 
   const notStartedList = interviews.filter((i) => i.status === 'NOT_STARTED');
   const completedList = interviews.filter((i) => i.status === 'COMPLETED');
-
-  // If inside active live AI interview
-  if (activeSession) {
-    return (
-      <div className="mx-auto w-full max-w-4xl space-y-6 pb-16 pt-4 font-sans select-none">
-        <div className="rounded-md border border-zinc-200/80 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-[#161616]">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
-                <Bot className="size-5" />
-              </div>
-              <div>
-                <h2 className="font-heading text-sm font-bold text-zinc-950 dark:text-white">
-                  Live AI Project Defense
-                </h2>
-                <p className="text-[11px] text-zinc-500">{activeSession.projectName}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-mono font-bold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                <Clock className="size-3.5 text-zinc-500" />
-                <span>{formatDuration(sessionSeconds)}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleEndInterview}
-                className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-rose-700"
-              >
-                End Interview
-              </button>
-            </div>
-          </div>
-
-          {/* Video / Mic indicator & Code View Grid */}
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Left: Video / Mic & AI Prompter */}
-            <div className="md:col-span-6 space-y-3">
-              {/* Student Video Feed simulation */}
-              <div className="relative aspect-video rounded-md bg-zinc-950 flex flex-col items-center justify-center text-white overflow-hidden border border-zinc-800">
-                <User className="size-16 text-zinc-600 mb-2" />
-                <span className="text-xs font-medium text-zinc-400">
-                  Student Video Feed (Active)
-                </span>
-                <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-md bg-zinc-900/80 px-2 py-1 text-[10px] text-emerald-400">
-                  <Mic className="size-3" />
-                  <span>Microphone Live</span>
-                </div>
-              </div>
-
-              {/* AI Question Bubble */}
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
-                <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                  <Bot className="size-3.5 text-zinc-900 dark:text-white" />
-                  AI Defense Examiner Question {currentAiQuestionIdx + 1} of {AI_QUESTIONS.length}:
-                </p>
-                <p className="mt-2 text-xs font-semibold text-zinc-900 dark:text-white leading-relaxed">
-                  &quot;{AI_QUESTIONS[currentAiQuestionIdx]}&quot;
-                </p>
-              </div>
-
-              {currentAiQuestionIdx < AI_QUESTIONS.length - 1 && (
-                <button
-                  type="button"
-                  onClick={() => setCurrentAiQuestionIdx((prev) => prev + 1)}
-                  className="w-full rounded-md border border-zinc-200 bg-white py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-                >
-                  Next Defense Question →
-                </button>
-              )}
-            </div>
-
-            {/* Right: Code Reference View */}
-            <div className="md:col-span-6 flex flex-col rounded-md border border-zinc-200 bg-zinc-950 text-white p-4 font-mono text-[11px] overflow-hidden">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-                <span className="flex items-center gap-1.5 text-zinc-400">
-                  <FileCode className="size-3.5" />
-                  Project Repository Context
-                </span>
-                <span className="text-[10px] text-emerald-400">Connected to Database</span>
-              </div>
-              <pre className="flex-1 overflow-y-auto text-zinc-300 space-y-1">
-                <code>{`// Project: ${activeSession.projectName}
-// Repository: ${activeSession.projectUrl}
-// Evaluated with SMART automated defense harness
-
-export async function executeDefense() {
-  const verified = await smartEvaluator.verifyDecisions({
-    projectId: "${activeSession.projectId}",
-    model: "gemini-2.5-pro",
-  });
-  return verified;
-}`}</code>
-              </pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-6 pb-16 pt-2 font-sans select-none">
@@ -495,13 +287,12 @@ export async function executeDefense() {
                   View outcome →
                 </Link>
 
-                <button
-                  type="button"
-                  onClick={() => setViewTranscriptTarget(item)}
+                <Link
+                  href={`/interviews/${item.projectId}/outcome`}
                   className="text-xs font-semibold text-zinc-900 hover:underline dark:text-white"
                 >
-                  Transcript
-                </button>
+                  Transcript & Review
+                </Link>
 
                 <button
                   type="button"
@@ -605,67 +396,6 @@ export async function executeDefense() {
                   className="rounded-md bg-zinc-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
                 >
                   Begin Interview
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* 📜 View Transcript Modal */}
-      <AnimatePresence>
-        {viewTranscriptTarget && viewTranscriptTarget.completedDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/50 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-md border border-zinc-200/80 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-[#161616]"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
-                <div>
-                  <h3 className="font-heading text-base font-bold text-zinc-950 dark:text-white">
-                    Defense Transcript
-                  </h3>
-                  <p className="text-[11px] text-zinc-500">{viewTranscriptTarget.projectName}</p>
-                </div>
-                <button
-                  onClick={() => setViewTranscriptTarget(null)}
-                  className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-
-              <div className="mt-4 flex-1 overflow-y-auto space-y-3 text-xs pr-1">
-                {viewTranscriptTarget.completedDetails.transcript.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      'p-3 rounded-md border',
-                      item.speaker === 'AI'
-                        ? 'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60'
-                        : 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30',
-                    )}
-                  >
-                    <div className="flex justify-between items-center text-[10px] text-zinc-400 mb-1">
-                      <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                        {item.speaker === 'AI' ? '🤖 AI Examiner' : '👤 Student Candidate'}
-                      </span>
-                      <span>{item.timestamp}</span>
-                    </div>
-                    <p className="text-zinc-800 dark:text-zinc-200 leading-relaxed">{item.text}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 flex justify-end pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setViewTranscriptTarget(null)}
-                  className="rounded-md bg-zinc-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-                >
-                  Close
                 </button>
               </div>
             </motion.div>

@@ -25,7 +25,7 @@ export const PROHIBITED_INFERENCES = new Set([
   'DECEPTION_DETECTION',
 ]);
 
-function coerceViolations(raw: unknown): ProctoringViolationKind[] {
+export function coerceViolations(raw: unknown): ProctoringViolationKind[] {
   if (!Array.isArray(raw)) return [];
 
   const kinds: ProctoringViolationKind[] = [];

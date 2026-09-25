@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AiProvider, AiUsageSummaryDto, AiUsageWindow } from '@smart/contracts';
+import type {
+  AiProvider,
+  AiUsageSummaryDto,
+  AiUsageWindow,
+  ListAiAuditLogsResponse,
+} from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 const ALL_PROVIDERS: readonly AiProvider[] = ['ANTHROPIC', 'GOOGLE', 'OPENROUTER'];
@@ -102,6 +107,33 @@ export class AiGatewayUsageService {
       last24h: summarizeWindow(rows24h),
       last30d: summarizeWindow(rows30d),
       errorRateAvailable: false,
+    };
+  }
+
+  /**
+   * I562 — real audit trail read: every AI call persisted by
+   * `AiCompletionRecordedConsumer`, newest first.
+   */
+  async listAuditLogs(): Promise<ListAiAuditLogsResponse> {
+    const rows = await this.prisma.aiEvaluationAudit.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return {
+      logs: rows.map((row) => ({
+        id: row.id,
+        promptRef: row.promptRef,
+        provider: row.provider,
+        model: row.model,
+        promptTokens: row.promptTokens,
+        completionTokens: row.completionTokens,
+        latencyMs: row.latencyMs,
+        estimatedCostUsd: num(row.estimatedCostUsd),
+        responseId: row.responseId,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      total: rows.length,
     };
   }
 }

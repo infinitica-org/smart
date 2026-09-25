@@ -3,10 +3,17 @@ import {
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
   CandidateMatchDtoSchema,
+  ListSavedCandidatesResponseSchema,
+  SavedCandidateDtoSchema,
+  MatchFeedbackResponseSchema,
   z,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
   type CandidateMatchDto,
+  type SubmitMatchFeedbackRequest,
+  type ListSavedCandidatesResponse,
+  type SavedCandidateDto,
+  type MatchFeedbackResponse,
 } from '@smart/contracts';
 import {
   SmartApiClient,
@@ -81,6 +88,41 @@ export const companyStudentsApi = {
         query,
       })
       .catch(() => [] as CandidateMatchDto[]),
+};
+
+export const companySavedCandidatesApi = {
+  list: (): Promise<ListSavedCandidatesResponse> =>
+    apiClient
+      .get(`${API_PREFIX}/placement/saved-candidates`, {
+        schema: ListSavedCandidatesResponseSchema,
+      })
+      .catch(() => ({ savedCandidates: [], total: 0 })),
+  save: (studentId: string, openingId?: string, note?: string): Promise<SavedCandidateDto | null> =>
+    apiClient
+      .post(
+        `${API_PREFIX}/placement/saved-candidates`,
+        { studentId, openingId, note },
+        { schema: SavedCandidateDtoSchema },
+      )
+      .catch(() => null),
+  remove: (studentId: string): Promise<{ success: boolean }> =>
+    apiClient
+      .request<{ success: boolean }>({
+        method: 'DELETE',
+        path: `${API_PREFIX}/placement/saved-candidates/${studentId}`,
+      })
+      .catch(() => ({ success: false })),
+};
+
+export const companyFeedbackApi = {
+  submitEmployerFeedback: (
+    body: SubmitMatchFeedbackRequest,
+  ): Promise<MatchFeedbackResponse | null> =>
+    apiClient
+      .post(`${API_PREFIX}/placement/feedback/employer`, body, {
+        schema: MatchFeedbackResponseSchema,
+      })
+      .catch(() => null),
 };
 
 export function formatApiError(error: unknown, fallback = 'Operation failed'): string {

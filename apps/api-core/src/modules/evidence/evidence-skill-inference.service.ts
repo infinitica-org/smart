@@ -32,6 +32,7 @@ import {
 } from './fusion-capability-sync.js';
 
 const CAPABILITY_MODEL_VERSION = 'capability-inference-v1' as const;
+const SKILL_INFERENCE_RUBRIC_VERSION = 'fusion-rubric@1' as const;
 
 function redisKey(studentId: string, skillCode: string): string {
   return `skill-evidence-inference:${studentId}:${skillCode}`;
@@ -113,6 +114,7 @@ export class EvidenceSkillInferenceService {
       provenance: {
         ruleSetVersion: FUSION_RULE_SET_VERSION,
         taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+        rubricVersion: SKILL_INFERENCE_RUBRIC_VERSION,
         capabilityModelVersion: CAPABILITY_MODEL_VERSION,
         assessmentBlueprintRef: blueprint.assessmentBlueprint ?? undefined,
         interviewBlueprintRef: blueprint.interviewBlueprint ?? undefined,
@@ -190,6 +192,7 @@ export class EvidenceSkillInferenceService {
       provenance: {
         ruleSetVersion: FUSION_RULE_SET_VERSION,
         taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+        rubricVersion: SKILL_INFERENCE_RUBRIC_VERSION,
         capabilityModelVersion: CAPABILITY_MODEL_VERSION,
         promptRefs: [...new Set([CAPABILITY_INFERENCE_PROMPT_REF, ...promptRefs])],
         evidenceRecordIds,
@@ -335,6 +338,7 @@ export class EvidenceSkillInferenceService {
       taxonomyVersion: snapshot.provenance.taxonomyVersion,
       capabilityModelVersion:
         snapshot.provenance.capabilityModelVersion ?? CAPABILITY_MODEL_VERSION,
+      rubricVersion: snapshot.provenance.rubricVersion,
     });
 
     await this.prisma.studentCapability.deleteMany({

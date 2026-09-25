@@ -102,14 +102,13 @@ export class AnalyticsService {
 
   /**
    * SEC-02 / I566: Test assessment outcomes for adverse impact using 4/5ths rule.
+   * Compares selection/clearance rates across cohorts / institutions / graduation years.
    */
   async getAdverseImpactReport(
     trackCode: TrackCode = 'TECH_FULLSTACK',
     levelNumber: 1 | 2 | 3 | 4 | 5 = 1,
   ): Promise<AdverseImpactReportDto> {
-    // Use SkillVerificationAttempt which has the `passed` field.
-    // Filter by track via SkillClaim -> Skill -> Track.
-    // Note: levelNumber is used as a proxy to scope to a specific program year.
+    // Retrieve attempts with student and institution metadata
     const attempts = await this.prisma.skillVerificationAttempt.findMany({
       where: {
         claim: {
@@ -122,31 +121,144 @@ export class AnalyticsService {
       select: {
         id: true,
         passed: true,
+        claimedProficiency: true,
+        claim: {
+          select: {
+            student: {
+              select: {
+                id: true,
+                institutionId: true,
+                institution: { select: { name: true } },
+                graduationYear: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    const total = attempts.length;
-    const passed = attempts.filter((a) => a.passed === true).length;
-    const rate = total > 0 ? passed / total : 1.0;
+    if (attempts.length === 0) {
+      return {
+        trackCode,
+        levelNumber,
+        fourFifthsRuleMet: true,
+        favorableGroup: 'COHORT_BASELINE',
+        groupRates: [
+          {
+            group: 'COHORT_BASELINE',
+            totalAssessed: 0,
+            clearedCount: 0,
+            selectionRate: 1.0,
+            impactRatio: 1.0,
+            adverseImpactDetected: false,
+          },
+        ],
+        evaluatedAt: new Date().toISOString(),
+      };
+    }
 
-    // EEOC 4/5ths rule: adverse impact when selection rate < 0.8 * highest group rate.
-    // With a single group we can only report baseline; multi-group comparison
-    // requires demographic data (not stored per privacy design).
+    // Partition attempts by cohort group (e.g. institution or graduation cohort)
+    const groupMap = new Map<string, { total: number; passed: number }>();
+
+    for (const attempt of attempts) {
+      const instName = attempt.claim.student.institution?.name;
+      const gradYear = attempt.claim.student.graduationYear;
+      const groupKey = instName
+        ? `${instName}`
+        : gradYear
+          ? `Class of ${gradYear}`
+          : `Group ${attempt.claimedProficiency}`;
+
+      const curr = groupMap.get(groupKey) || { total: 0, passed: 0 };
+      curr.total += 1;
+      if (attempt.passed === true) {
+        curr.passed += 1;
+      }
+      groupMap.set(groupKey, curr);
+    }
+
+    // If only one group, add baseline comparison
+    if (groupMap.size <= 1) {
+      const total = attempts.length;
+      const passed = attempts.filter((a) => a.passed === true).length;
+      const rate = total > 0 ? passed / total : 1.0;
+      return {
+        trackCode,
+        levelNumber,
+        fourFifthsRuleMet: true,
+        favorableGroup: 'COHORT_BASELINE',
+        groupRates: [
+          {
+            group: 'COHORT_BASELINE',
+            totalAssessed: total,
+            clearedCount: passed,
+            selectionRate: rate,
+            impactRatio: 1.0,
+            adverseImpactDetected: false,
+          },
+        ],
+        evaluatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Compute selection rates for each group
+    const groups: Array<{
+      group: string;
+      totalAssessed: number;
+      clearedCount: number;
+      selectionRate: number;
+    }> = [];
+
+    let highestRate = 0;
+    let favorableGroup = '';
+
+    for (const [groupName, stats] of groupMap.entries()) {
+      const selectionRate = stats.total > 0 ? stats.passed / stats.total : 0;
+      groups.push({
+        group: groupName,
+        totalAssessed: stats.total,
+        clearedCount: stats.passed,
+        selectionRate,
+      });
+
+      if (selectionRate > highestRate) {
+        highestRate = selectionRate;
+        favorableGroup = groupName;
+      }
+    }
+
+    const firstGroup = groups[0];
+    if (!favorableGroup && firstGroup) {
+      favorableGroup = firstGroup.group;
+      highestRate = firstGroup.selectionRate;
+    }
+
+    // Calculate impact ratio relative to the favorable (highest selection rate) group
+    // EEOC 4/5ths Rule: Adverse impact exists if impact ratio < 0.80 (80%)
+    let fourFifthsRuleMet = true;
+
+    const groupRates = groups.map((g) => {
+      const impactRatio = highestRate > 0 ? g.selectionRate / highestRate : 1.0;
+      const adverseImpactDetected = impactRatio < 0.8;
+      if (adverseImpactDetected) {
+        fourFifthsRuleMet = false;
+      }
+      return {
+        group: g.group,
+        totalAssessed: g.totalAssessed,
+        clearedCount: g.clearedCount,
+        selectionRate: g.selectionRate,
+        impactRatio: Number(impactRatio.toFixed(3)),
+        adverseImpactDetected,
+      };
+    });
+
     return {
       trackCode,
       levelNumber,
-      fourFifthsRuleMet: true,
-      favorableGroup: 'COHORT_BASELINE',
-      groupRates: [
-        {
-          group: 'COHORT_BASELINE',
-          totalAssessed: total,
-          clearedCount: passed,
-          selectionRate: rate,
-          impactRatio: 1.0,
-          adverseImpactDetected: false,
-        },
-      ],
+      fourFifthsRuleMet,
+      favorableGroup,
+      groupRates,
       evaluatedAt: new Date().toISOString(),
     };
   }

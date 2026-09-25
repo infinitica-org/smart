@@ -546,6 +546,7 @@ describe('ProjectDefenseService', () => {
     });
 
     const started = await service.start(projectId, userId);
+
     await expect(
       service.reply(projectId, userId, {
         sessionId: started.session.sessionId,
@@ -554,5 +555,55 @@ describe('ProjectDefenseService', () => {
     ).rejects.toMatchObject({
       response: expect.objectContaining({ error: 'invalid_audio_key' }),
     });
+  });
+
+  it('INT-01 / I295: routes low-confidence defense evaluations (score < 50) to human review queue', async () => {
+    const { service, gateway, prisma } = setup();
+    gateway.complete.mockResolvedValueOnce({
+      output: {
+        question: 'For Bus tracker, where did you use TypeScript in the websocket ingest?',
+        probes: 'SKILLS_APPLICATION',
+        isFinalTurn: true,
+      },
+      auditId: randomUUID(),
+    });
+
+    const started = await service.start(projectId, userId);
+    await service.reply(projectId, userId, {
+      sessionId: started.session.sessionId,
+      transcript: 'I used TypeScript for types and NestJS gateway for WebSocket events.',
+    });
+
+    // Mock low-scoring grading response (< 50)
+    gateway.complete.mockResolvedValueOnce({
+      output: {
+        dimensions: {
+          depthOfUnderstanding: 30,
+          ownershipAndOriginality: 35,
+          defenseQuality: 40,
+        },
+        ownershipConcern: false,
+        ownershipConcernReason: null,
+        justification:
+          'The candidate was unable to explain their codebase architecture adequately.',
+        demonstratedClaims: [],
+        inferredClaims: [],
+        competencyScores: [],
+      },
+      auditId: randomUUID(),
+    });
+
+    const completed = await service.complete(projectId, userId, {
+      sessionId: started.session.sessionId,
+    });
+
+    expect(completed.grade.routedToReview).toBe(true);
+    expect(completed.grade.ownershipConcernReason).toContain('below 50% confidence threshold');
+    expect(completed.projectStatus).toBe('UNDER_REVIEW');
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: 'UNDER_REVIEW' },
+      }),
+    );
   });
 });

@@ -10,8 +10,10 @@ export function fusionCapabilityModelVersion(input: {
   ruleSetVersion: string;
   taxonomyVersion: string;
   capabilityModelVersion: string;
+  rubricVersion?: string;
 }): string {
-  return `${FUSION_CAPABILITY_MODEL_PREFIX}${input.ruleSetVersion}|${input.taxonomyVersion}|${input.capabilityModelVersion}`;
+  const rubric = input.rubricVersion ? `|${input.rubricVersion}` : '';
+  return `${FUSION_CAPABILITY_MODEL_PREFIX}${input.ruleSetVersion}|${input.taxonomyVersion}|${input.capabilityModelVersion}${rubric}`;
 }
 
 const STATUS_CONFIDENCE: Record<CompetencyStatus, number> = {

@@ -754,3 +754,65 @@ export const MatchFeedbackResponseSchema = z.object({
   status: z.literal('RECORDED'),
 });
 export type MatchFeedbackResponse = z.infer<typeof MatchFeedbackResponseSchema>;
+
+export const MatchFeedbackSummaryDtoSchema = z.object({
+  totalFeedbacks: z.number().int().nonnegative(),
+  relevantCount: z.number().int().nonnegative(),
+  notRelevantCount: z.number().int().nonnegative(),
+  satisfactionRate: z.number().min(0).max(1),
+  ratingBreakdown: z.record(MatchFeedbackRatingSchema, z.number().int().nonnegative()),
+  commonIrrelevantReasons: z.array(
+    z.object({
+      reason: z.string(),
+      count: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type MatchFeedbackSummaryDto = z.infer<typeof MatchFeedbackSummaryDtoSchema>;
+
+/* --------------------------- saved candidates (I401) ------------------------- */
+
+export const SavedCandidateDtoSchema = z.object({
+  id: UuidSchema,
+  savedBy: UuidSchema,
+  studentId: UuidSchema,
+  openingId: UuidSchema.nullable().optional(),
+  note: z.string().max(2000).nullable().optional(),
+  savedAt: IsoDateTimeSchema,
+  student: z
+    .object({
+      id: UuidSchema,
+      fullName: z.string(),
+      email: z.string().optional(),
+      primaryTrackCode: TrackCodeSchema.optional(),
+      highestLevelCleared: LevelNumberSchema.optional(),
+      headlineTier: CertifiableTierSchema.optional(),
+    })
+    .optional(),
+});
+export type SavedCandidateDto = z.infer<typeof SavedCandidateDtoSchema>;
+
+export const SaveCandidateRequestSchema = z.object({
+  studentId: UuidSchema,
+  openingId: UuidSchema.optional(),
+  note: z.string().max(2000).optional(),
+});
+export type SaveCandidateRequest = z.infer<typeof SaveCandidateRequestSchema>;
+
+export const ListSavedCandidatesResponseSchema = z.object({
+  savedCandidates: z.array(SavedCandidateDtoSchema),
+  total: z.number().int(),
+});
+export type ListSavedCandidatesResponse = z.infer<typeof ListSavedCandidatesResponseSchema>;
+
+export const SearchStudentsQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  skillCode: z.string().max(50).optional(),
+  university: z.string().max(200).optional(),
+  gradYear: z.string().max(10).optional(),
+  availability: z.string().max(50).optional(),
+  minLevel: z.string().max(50).optional(),
+  verificationType: z.string().max(50).optional(),
+  scopedJobId: z.string().max(50).optional(),
+});
+export type SearchStudentsQuery = z.infer<typeof SearchStudentsQuerySchema>;

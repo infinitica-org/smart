@@ -177,6 +177,54 @@ export default function CandidateDetailPage({
         </div>
       </div>
 
+      {/* Summarized Competency Evidence (INT-01 / I296: Privacy-Preserving Summaries Without Restricted Recordings) */}
+      {candidate.explanation.competencyEvidenceSummaries?.length ? (
+        <div className={`${card} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <h2 className={sectionTitle}>Competency Evidence Summaries</h2>
+            <span className="text-[11px] font-medium text-zinc-500">
+              Privacy-safe observation digests · No video/audio recordings exposed
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {candidate.explanation.competencyEvidenceSummaries.map((evidence, idx) => (
+              <div
+                key={idx}
+                className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 space-y-1.5 text-xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-900">{evidence.capabilityLabel}</span>
+                  {evidence.skillCode && (
+                    <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-mono text-zinc-700">
+                      {evidence.skillCode}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-zinc-600">
+                  <span>
+                    Proficiency: <strong className="text-zinc-800">{evidence.proficiency}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Confidence:{' '}
+                    <strong className="text-zinc-800">
+                      {Math.round(evidence.confidenceScore * 100)}%
+                    </strong>
+                  </span>
+                </div>
+                {evidence.evidenceSnippets && evidence.evidenceSnippets.length > 0 && (
+                  <ul className="mt-1 list-disc list-inside text-xs text-zinc-600 space-y-0.5">
+                    {evidence.evidenceSnippets.map((snippet, sIdx) => (
+                      <li key={sIdx}>{snippet}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Recruiter / Match Narrative */}
       {candidate.explanation.recruiterSummary ? (
         <div className={`${card} bg-blue-50/40 border-blue-100 p-5 space-y-2`}>
