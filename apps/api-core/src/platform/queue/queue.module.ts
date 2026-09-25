@@ -8,12 +8,14 @@ import {
   PdfGenerationProcessor,
   SandboxExecutionProcessor,
 } from './async-job.processor.js';
-import { AuditLogPurgeProcessor } from './audit-log-purge.processor.js';
+import { RetentionSweepProcessor } from '../retention/retention-sweep.processor.js';
+import { RetentionSweepService } from '../retention/retention-sweep.service.js';
+import { StorageModule } from '../storage/storage.module.js';
 import { EmailProcessor } from './email.processor.js';
 import {
   AUDIO_EVALUATION_DLQ,
   AUDIO_EVALUATION_QUEUE,
-  AUDIT_LOG_PURGE_QUEUE,
+  RETENTION_SWEEP_QUEUE,
   MESSAGE_MODERATION_PURGE_QUEUE,
   CREDENTIAL_VERIFICATION_DLQ,
   CREDENTIAL_VERIFICATION_QUEUE,
@@ -47,7 +49,7 @@ const queues = [
   { name: SANDBOX_EXECUTION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: AUDIO_EVALUATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: PDF_GENERATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
-  { name: AUDIT_LOG_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: RETENTION_SWEEP_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: MESSAGE_MODERATION_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: EVIDENCE_EXPIRATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: EVIDENCE_RECONCILIATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
@@ -82,13 +84,15 @@ const queues = [
     }),
     BullModule.registerQueue(...queues),
     forwardRef(() => EvidenceModule),
+    StorageModule,
   ],
   providers: [
     EmailProcessor,
     SandboxExecutionProcessor,
     AudioEvaluationProcessor,
     PdfGenerationProcessor,
-    AuditLogPurgeProcessor,
+    RetentionSweepService,
+    RetentionSweepProcessor,
   ],
   exports: [BullModule],
 })

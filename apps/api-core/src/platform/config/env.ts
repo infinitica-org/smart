@@ -152,6 +152,12 @@ const EnvSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
 
+  /** S6-VV-118 — the daily retention sweep only counts until this is set to false. */
+  RETENTION_DRY_RUN: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+
   /** Explicit stub guard for project-defense oral interview evaluation. Never allowed in production. */
   ENABLE_DEFENSE_STUB: z
     .enum(['true', 'false'])

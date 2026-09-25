@@ -11,7 +11,7 @@ import { EvidenceExpirationService } from './evidence-expiration.service.js';
 
 /**
  * Daily scan for credential evidence past ProfessionalCredential.expiryDate.
- * Uses upsertJobScheduler — same pattern as audit-log-purge.processor.ts.
+ * Uses upsertJobScheduler — same pattern as retention-sweep.processor.ts.
  */
 @Processor(EVIDENCE_EXPIRATION_QUEUE)
 export class EvidenceExpirationProcessor extends WorkerHost implements OnModuleInit {
