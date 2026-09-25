@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
@@ -45,6 +44,8 @@ import {
   type VerificationDecisionDto,
   type EvidenceSkillDisputeRequest,
   type EvidenceSkillDisputeResponse,
+  type ResolveEvidenceDisputeRequest,
+  type ResolveEvidenceDisputeResponse,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -1248,29 +1249,75 @@ export class EvidenceService {
     studentId: string,
     body: EvidenceSkillDisputeRequest,
   ): Promise<EvidenceSkillDisputeResponse> {
-    const record = await this.prisma.evidenceRecord.findFirst({
-      where: { id: body.evidenceId, studentId },
-    });
-    if (!record) {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Evidence record not found.',
-        statusCode: 404,
+    let evidenceRecordId = body.evidenceId;
+    const isZeroUuid = evidenceRecordId === '00000000-0000-0000-0000-000000000000';
+
+    if (!evidenceRecordId || isZeroUuid) {
+      const candidateRecord = await this.prisma.evidenceRecord.findFirst({
+        where: {
+          studentId,
+          relatedSkillCodes: { has: body.skillCode },
+        },
+        orderBy: { createdAt: 'desc' },
       });
+      if (candidateRecord) {
+        evidenceRecordId = candidateRecord.id;
+      } else {
+        const anyRecord = await this.prisma.evidenceRecord.findFirst({
+          where: { studentId },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (anyRecord) {
+          evidenceRecordId = anyRecord.id;
+        } else {
+          // Create synthetic evidence claim record so dispute is always persisted
+          const created = await this.prisma.evidenceRecord.create({
+            data: {
+              studentId,
+              evidenceType: 'ASSESSMENT',
+              source: 'CANDIDATE',
+              verificationStatus: 'DISPUTED',
+              relatedSkillCodes: [body.skillCode],
+              sourcePayload: { reason: 'Created via student evidence dispute' },
+            },
+          });
+          evidenceRecordId = created.id;
+        }
+      }
+    } else {
+      const record = await this.prisma.evidenceRecord.findFirst({
+        where: { id: evidenceRecordId, studentId },
+      });
+      if (!record) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Evidence record not found.',
+          statusCode: 404,
+        });
+      }
     }
 
-    const disputeId = randomUUID ? randomUUID() : (await import('node:crypto')).randomUUID();
-    const now = new Date().toISOString();
+    const dispute = await this.prisma.evidenceSkillDispute.create({
+      data: {
+        studentId,
+        evidenceId: evidenceRecordId,
+        skillCode: body.skillCode,
+        reason: body.reason,
+        status: 'UNDER_REVIEW',
+      },
+    });
+
+    const now = dispute.createdAt.toISOString();
 
     if (this.auditPublisher) {
       await this.auditPublisher.record({
         actorId: studentId,
         action: 'evidence.disputed',
         resourceType: 'evidence_record',
-        resourceId: body.evidenceId,
+        resourceId: body.evidenceId ?? null,
         reasonCode: 'STUDENT_DISPUTE',
         metadata: {
-          disputeId,
+          disputeId: dispute.id,
           skillCode: body.skillCode,
           reason: body.reason,
           submittedAt: now,
@@ -1279,11 +1326,81 @@ export class EvidenceService {
     }
 
     return {
-      disputeId,
+      disputeId: dispute.id,
       evidenceId: body.evidenceId,
       skillCode: body.skillCode,
       status: 'UNDER_REVIEW',
       submittedAt: now,
+    };
+  }
+
+  async listEvidenceSkillDisputes(user: RequestUser, filters?: { status?: string }) {
+    const where: { studentId?: string; status?: string } = {};
+    if (user.role === 'STUDENT') {
+      where.studentId = user.sub;
+    }
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+    return this.prisma.evidenceSkillDispute.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        evidence: true,
+      },
+    });
+  }
+
+  async resolveEvidenceSkillDispute(
+    reviewerId: string,
+    disputeId: string,
+    body: ResolveEvidenceDisputeRequest,
+  ): Promise<ResolveEvidenceDisputeResponse> {
+    const dispute = await this.prisma.evidenceSkillDispute.findUnique({
+      where: { id: disputeId },
+    });
+    if (!dispute) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence dispute not found.',
+        statusCode: 404,
+      });
+    }
+
+    const nextStatus = body.resolution === 'ACCEPTED' ? 'RESOLVED_ACCEPTED' : 'RESOLVED_REJECTED';
+    const now = new Date();
+
+    const updated = await this.prisma.evidenceSkillDispute.update({
+      where: { id: disputeId },
+      data: {
+        status: nextStatus,
+        reviewerId,
+        reviewNote: body.reviewNote,
+        reviewedAt: now,
+      },
+    });
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: reviewerId,
+        action: 'evidence.dispute_resolved',
+        resourceType: 'evidence_skill_dispute',
+        resourceId: disputeId,
+        reasonCode: body.resolution === 'ACCEPTED' ? 'DISPUTE_ACCEPTED' : 'DISPUTE_REJECTED',
+        metadata: {
+          disputeId: updated.id,
+          resolution: body.resolution,
+          reviewNote: body.reviewNote,
+          reviewedAt: now.toISOString(),
+        },
+      });
+    }
+
+    return {
+      disputeId: updated.id,
+      status: nextStatus as 'RESOLVED_ACCEPTED' | 'RESOLVED_REJECTED',
+      reviewedAt: now.toISOString(),
+      reviewerId,
     };
   }
 }

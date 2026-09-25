@@ -14,6 +14,7 @@ import { mergeProjectObservationBundles } from './qlix-project-observations.js';
 export type SkillInferenceProvenance = {
   ruleSetVersion: string;
   taxonomyVersion: string;
+  rubricVersion?: string;
   capabilityModelVersion?: string;
   assessmentBlueprintRef?: string;
   interviewBlueprintRef?: string;

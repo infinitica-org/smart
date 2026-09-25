@@ -71,13 +71,24 @@ describe('tenant scoping on institution controllers (#166)', () => {
     expect(routes.filter((name) => !scoped.has(name))).toEqual([]);
   });
 
-  it('PlacementMatchController scopes TPO routes with @TenantId() except multi-role feedback', () => {
+  it('PlacementMatchController scopes institution match routes with @TenantId()', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, PlacementMatchController)).toContain(
       TenantScopeGuard,
     );
     const scoped = handlersWithTenantId(PlacementMatchController);
     const unscoped = routeHandlers(PlacementMatchController).filter((name) => !scoped.has(name));
-    expect(unscoped.sort()).toEqual(['submitStudentFeedback', 'submitEmployerFeedback'].sort());
+    // Multi-role endpoints (student/company/employer feedback, candidate search and bookmarks)
+    expect(unscoped.sort()).toEqual(
+      [
+        'getFeedbackSummary',
+        'listSavedCandidates',
+        'removeSavedCandidate',
+        'saveCandidate',
+        'searchStudents',
+        'submitEmployerFeedback',
+        'submitStudentFeedback',
+      ].sort(),
+    );
   });
 
   it('PlacementController scopes every route except the multi-role evidence reads', () => {

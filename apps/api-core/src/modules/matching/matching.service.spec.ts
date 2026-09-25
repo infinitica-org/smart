@@ -115,6 +115,16 @@ function setup(
     application: {
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    matchFeedback: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({
+          id: randomUUID(),
+          createdAt: new Date(),
+          ...data,
+        }),
+      ),
+    },
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const matchRunQueue = { add: vi.fn().mockResolvedValue(undefined) };
@@ -480,11 +490,14 @@ describe('S6-VV-76 async match runs', () => {
   });
 
   it('returns a run scoped to its own institution', async () => {
-    const { service, prisma } = setup({ matchRun: matchRunRow({ status: 'SUCCEEDED' }) });
+    const { service, prisma } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', rankerVersion: 'v1.2.0' }),
+    });
 
     const dto = await service.getMatchRun(institutionId, 'run-1');
 
     expect(dto.status).toBe('SUCCEEDED');
+    expect(dto.rankerVersion).toBe('v1.2.0');
     expect(prisma.matchRun.findFirst).toHaveBeenCalledWith({
       where: { id: 'run-1', institutionId },
     });
@@ -496,6 +509,44 @@ describe('S6-VV-76 async match runs', () => {
     await expect(service.getMatchRun(otherInstitutionId, 'run-1')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  describe('getMatchFeedbackSummary (I376)', () => {
+    it('aggregates ratings, reasons, and computes satisfaction percentage', async () => {
+      const { service, prisma } = setup();
+      prisma.matchFeedback.findMany.mockResolvedValueOnce([
+        { rating: 'EXCELLENT', irrelevantReasons: [] },
+        { rating: 'RELEVANT', irrelevantReasons: [] },
+        { rating: 'PARTIALLY_RELEVANT', irrelevantReasons: ['Skill mismatch'] },
+        { rating: 'NOT_RELEVANT', irrelevantReasons: ['Skill mismatch', 'Overqualified'] },
+      ]);
+
+      const summary = await service.getMatchFeedbackSummary();
+
+      expect(summary.totalFeedbacks).toBe(4);
+      expect(summary.relevantCount).toBe(2);
+      expect(summary.notRelevantCount).toBe(1);
+      expect(summary.satisfactionRate).toBe(0.63); // (2 + 0.5) / 4 = 2.5 / 4 = 0.625 -> 0.63
+      expect(summary.ratingBreakdown.EXCELLENT).toBe(1);
+      expect(summary.ratingBreakdown.RELEVANT).toBe(1);
+      expect(summary.ratingBreakdown.PARTIALLY_RELEVANT).toBe(1);
+      expect(summary.ratingBreakdown.NOT_RELEVANT).toBe(1);
+      expect(summary.commonIrrelevantReasons).toEqual([
+        { reason: 'Skill mismatch', count: 2 },
+        { reason: 'Overqualified', count: 1 },
+      ]);
+    });
+
+    it('returns default 1.0 satisfaction when no feedbacks exist', async () => {
+      const { service, prisma } = setup();
+      prisma.matchFeedback.findMany.mockResolvedValueOnce([]);
+
+      const summary = await service.getMatchFeedbackSummary();
+
+      expect(summary.totalFeedbacks).toBe(0);
+      expect(summary.satisfactionRate).toBe(1.0);
+      expect(summary.commonIrrelevantReasons).toEqual([]);
+    });
   });
 });
 
@@ -553,6 +604,65 @@ describe('S6-VV-148 employer visibility', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.getCandidateFit(institutionId, runId, studentId)).resolves.toMatchObject({
       studentId,
+    });
+  });
+
+  it('MAT-01 / I374: never queries or includes protected demographic attributes in matching query', async () => {
+    const { controller, prisma } = setup();
+
+    await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
+
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    const sqlText = sqlArg.sql.toLowerCase();
+
+    // Explicitly verify prohibited protected attributes are not part of query or select fields
+    expect(sqlText).not.toContain('gender');
+    expect(sqlText).not.toContain('caste');
+    expect(sqlText).not.toContain('religion');
+    expect(sqlText).not.toContain('race');
+    expect(sqlText).not.toContain('date_of_birth');
+    expect(sqlText).not.toContain('disability');
+    expect(sqlText).not.toContain('photo');
+  });
+
+  describe('MAT-01 / I369: Distinguish mandatory requirements from preferences', () => {
+    it('enforces mandatory skill requirements in pool query while scoring preference skills conditionally', async () => {
+      const { controller, prisma } = setup();
+
+      await controller.match(
+        {
+          jdId: openingId,
+          requiredSkillCodes: ['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION'],
+        },
+        resolveTenantId(tpoAdmin as never),
+      );
+
+      const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+      const sqlText = sqlArg.sql;
+
+      // Mandatory required skill codes must be enforced via EXISTS with status = 'VERIFIED'
+      expect(sqlText).toContain("sc_req.status = 'VERIFIED'");
+      expect(sqlText).toContain('sk_req.code =');
+    });
+  });
+
+  describe('SRC-01 searchStudents filters (I399, I402, I404)', () => {
+    it('I399 & I402: filters by immediate availability and excludes deactivated / held students', async () => {
+      const { service, prisma } = setup();
+      prisma.$queryRaw.mockResolvedValueOnce([]);
+
+      await service.searchStudents({ sub: actorId, role: 'COMPANY', inst: undefined } as never, {
+        availability: 'Immediate',
+        verificationType: 'ai_defense',
+      });
+
+      const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+      const sqlText = sqlArg.sql;
+      expect(sqlText).toContain('u.deactivated_at IS NULL');
+      expect(sqlText).toContain('u.held_at IS NULL');
+      expect(sqlText).toContain('u.profile_visible = TRUE');
+      expect(sqlText).toContain("ILIKE '%immediate%'");
+      expect(sqlText).toContain('projects p_def');
     });
   });
 });

@@ -88,6 +88,7 @@ import type {
   SupportHistoryResponse,
   SupportSessionResponse,
   EvidenceSkillDisputeRequest,
+  ResolveEvidenceDisputeRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -105,6 +106,8 @@ import {
   VerificationEventDtoSchema,
   AiHealthDtoSchema,
   AiUsageSummaryDtoSchema,
+  AdverseImpactReportDtoSchema,
+  ListAiAuditLogsResponseSchema,
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
@@ -202,6 +205,9 @@ import {
   ProjectSkillMappingDtoSchema,
   VerificationDecisionDtoSchema,
   EvidenceSkillDisputeResponseSchema,
+  EvidenceSkillDisputeRowSchema,
+  ResolveEvidenceDisputeResponseSchema,
+  MatchFitDtoSchema,
   SkillVerifyInterviewDtoSchema,
   SkillVerifyPrepareDtoSchema,
   SkillVerifySessionDtoSchema,
@@ -282,6 +288,11 @@ import {
   VoidWorkExperienceResponseSchema,
   ApproveWorkExperienceAuthenticityResponseSchema,
   VoidCandidateCertificateResponseSchema,
+  type ToggleModelVersionRequest,
+  type ToggleModelVersionResponse,
+  ToggleModelVersionResponseSchema,
+  ListRegisteredPromptsResponseSchema,
+  type CorrectStudentCapabilityRequest,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -1414,6 +1425,17 @@ export function evidenceApi(client: SmartApiClient) {
       client.post(prefixed('/users/me/evidence-skill-disputes'), body, {
         schema: EvidenceSkillDisputeResponseSchema,
       }),
+
+    listAdminEvidenceSkillDisputes: (query?: { status?: string }) =>
+      client.get(prefixed('/admin/evidence-skill-disputes'), {
+        schema: z.array(EvidenceSkillDisputeRowSchema),
+        query,
+      }),
+
+    resolveAdminEvidenceSkillDispute: (disputeId: string, body: ResolveEvidenceDisputeRequest) =>
+      client.post(prefixed(`/admin/evidence-skill-disputes/${disputeId}/resolve`), body, {
+        schema: ResolveEvidenceDisputeResponseSchema,
+      }),
   };
 }
 
@@ -1669,6 +1691,11 @@ export function placementApi(client: SmartApiClient) {
     /** Candidate My Applications. Identity is the access token; no studentId query. */
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
+
+    getApplicationFit: (applicationId: string) =>
+      client.get(prefixed(`/me/applications/${applicationId}/fit`), {
+        schema: MatchFitDtoSchema,
+      }),
 
     getCandidateEvidenceProvenance: (studentId: string) =>
       client.get(prefixed(`/placement/candidates/${studentId}/evidence`), {
@@ -1946,6 +1973,41 @@ export function evaluationApi(client: SmartApiClient) {
       client.post(prefixed('/evaluation/skill-form/run-code'), body, {
         schema: RunSdeSkillFormCodeResponseSchema,
         timeoutMs: 60_000,
+      }),
+
+    listRegisteredPrompts: () =>
+      client.get(prefixed('/admin/ai-prompts'), {
+        schema: ListRegisteredPromptsResponseSchema,
+      }),
+
+    listAiAuditLogs: () =>
+      client.get(prefixed('/admin/ai-audit-logs'), {
+        schema: ListAiAuditLogsResponseSchema,
+      }),
+
+    getAdverseImpact: (params?: { trackCode?: string; levelNumber?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.trackCode) q.set('trackCode', params.trackCode);
+      if (params?.levelNumber) q.set('levelNumber', String(params.levelNumber));
+      const qs = q.toString();
+      return client.get(prefixed(`/analytics/adverse-impact${qs ? `?${qs}` : ''}`), {
+        schema: AdverseImpactReportDtoSchema,
+      });
+    },
+
+    toggleModelVersion: (body: ToggleModelVersionRequest) =>
+      client.post<ToggleModelVersionResponse>(prefixed('/admin/ai-models/toggle'), body, {
+        schema: ToggleModelVersionResponseSchema,
+      }),
+
+    listCapabilityReviewQueue: (limit = 50) =>
+      client.get(prefixed(`/admin/student-capabilities/review-queue?limit=${limit}`), {
+        schema: ListCapabilityInferenceReviewQueueResponseSchema,
+      }),
+
+    correctCapability: (capabilityId: string, body: CorrectStudentCapabilityRequest) =>
+      client.post(prefixed(`/admin/student-capabilities/${capabilityId}/correct`), body, {
+        schema: CorrectStudentCapabilityResponseSchema,
       }),
   };
 }

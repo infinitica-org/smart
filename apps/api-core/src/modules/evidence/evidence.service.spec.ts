@@ -45,6 +45,12 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
       findFirst: vi.fn(),
       update: vi.fn(),
     },
+    evidenceSkillDispute: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
     $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<unknown>) =>
       callback(prisma),
     ),
@@ -882,5 +888,58 @@ describe('EvidenceService credential upload validation', () => {
     await expect(service.createCredential('student-1', { issuer: '' })).rejects.toBeDefined();
 
     expect(prisma.professionalCredential.create).not.toHaveBeenCalled();
+  });
+
+  describe('evidence skill disputes (I319)', () => {
+    it('resolves dispute with ACCEPTED status and records reviewer audit', async () => {
+      const { service, prisma } = buildService();
+      const disputeId = 'dispute-1';
+      const reviewerId = 'admin-1';
+      prisma.evidenceSkillDispute.findUnique.mockResolvedValueOnce({
+        id: disputeId,
+        studentId: 'student-1',
+        evidenceId: 'evidence-1',
+        skillCode: 'SE_DATA_STRUCTURES_ALGORITHMS',
+        status: 'UNDER_REVIEW',
+      });
+      prisma.evidenceSkillDispute.update.mockResolvedValueOnce({
+        id: disputeId,
+        status: 'RESOLVED_ACCEPTED',
+        reviewerId,
+        reviewNote: 'Mapping updated successfully',
+        reviewedAt: new Date('2026-09-25T12:00:00.000Z'),
+      });
+
+      const res = await service.resolveEvidenceSkillDispute(reviewerId, disputeId, {
+        resolution: 'ACCEPTED',
+        reviewNote: 'Mapping updated successfully',
+      });
+
+      expect(res.status).toBe('RESOLVED_ACCEPTED');
+      expect(res.disputeId).toBe(disputeId);
+      expect(res.reviewerId).toBe(reviewerId);
+      expect(prisma.evidenceSkillDispute.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: disputeId },
+          data: expect.objectContaining({
+            status: 'RESOLVED_ACCEPTED',
+            reviewerId,
+            reviewNote: 'Mapping updated successfully',
+          }),
+        }),
+      );
+    });
+
+    it('throws NotFoundException when resolving non-existent dispute', async () => {
+      const { service, prisma } = buildService();
+      prisma.evidenceSkillDispute.findUnique.mockResolvedValueOnce(null);
+
+      await expect(
+        service.resolveEvidenceSkillDispute('admin-1', 'missing-dispute', {
+          resolution: 'REJECTED',
+          reviewNote: 'No justification provided',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

@@ -200,7 +200,7 @@ export type CandidateEvidenceProvenanceResponse = z.infer<
 >;
 
 export const EvidenceSkillDisputeRequestSchema = z.object({
-  evidenceId: UuidSchema,
+  evidenceId: UuidSchema.optional(),
   skillCode: TaxonomySkillCodeSchema,
   reason: z.string().min(8).max(2_000),
 });
@@ -208,9 +208,38 @@ export type EvidenceSkillDisputeRequest = z.infer<typeof EvidenceSkillDisputeReq
 
 export const EvidenceSkillDisputeResponseSchema = z.object({
   disputeId: UuidSchema,
-  evidenceId: UuidSchema,
+  evidenceId: UuidSchema.optional(),
   skillCode: TaxonomySkillCodeSchema,
   status: z.literal('UNDER_REVIEW'),
   submittedAt: IsoDateTimeSchema,
 });
 export type EvidenceSkillDisputeResponse = z.infer<typeof EvidenceSkillDisputeResponseSchema>;
+
+export const ResolveEvidenceDisputeRequestSchema = z.object({
+  resolution: z.enum(['ACCEPTED', 'REJECTED']),
+  reviewNote: z.string().min(5).max(1_000),
+});
+export type ResolveEvidenceDisputeRequest = z.infer<typeof ResolveEvidenceDisputeRequestSchema>;
+
+export const ResolveEvidenceDisputeResponseSchema = z.object({
+  disputeId: UuidSchema,
+  status: z.enum(['RESOLVED_ACCEPTED', 'RESOLVED_REJECTED']),
+  reviewedAt: IsoDateTimeSchema,
+  reviewerId: UuidSchema,
+});
+export type ResolveEvidenceDisputeResponse = z.infer<typeof ResolveEvidenceDisputeResponseSchema>;
+
+export const EvidenceSkillDisputeRowSchema = z.object({
+  id: UuidSchema,
+  studentId: UuidSchema,
+  evidenceId: UuidSchema,
+  skillCode: TaxonomySkillCodeSchema,
+  reason: z.string(),
+  status: z.string(),
+  reviewedAt: IsoDateTimeSchema.nullable(),
+  reviewerId: UuidSchema.nullable(),
+  reviewNote: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  evidence: z.any().optional(),
+});
+export type EvidenceSkillDisputeRow = z.infer<typeof EvidenceSkillDisputeRowSchema>;

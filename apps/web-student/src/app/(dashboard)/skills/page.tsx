@@ -80,6 +80,7 @@ export default function SkillsProfilePage() {
   const [disputeReason, setDisputeReason] = useState('');
   const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeSuccess, setDisputeSuccess] = useState(false);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
 
   // Add skills dialog state
   const [addSkillOpen, setAddSkillOpen] = useState(false);
@@ -502,6 +503,7 @@ export default function SkillsProfilePage() {
                             });
                             setDisputeReason('');
                             setDisputeSuccess(false);
+                            setDisputeError(null);
                           }}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400"
                         >
@@ -742,6 +744,12 @@ export default function SkillsProfilePage() {
                     />
                   </div>
 
+                  {disputeError && (
+                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                      {disputeError}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                     <button
                       type="button"
@@ -755,15 +763,19 @@ export default function SkillsProfilePage() {
                       disabled={disputeReason.trim().length < 8 || submittingDispute}
                       onClick={async () => {
                         setSubmittingDispute(true);
+                        setDisputeError(null);
                         try {
                           await api.evidence.disputeEvidenceMapping({
-                            evidenceId: '00000000-0000-0000-0000-000000000000',
                             skillCode: disputeTarget.skillCode,
                             reason: disputeReason.trim(),
                           });
                           setDisputeSuccess(true);
-                        } catch {
-                          setDisputeSuccess(true); // graceful UX
+                        } catch (err: unknown) {
+                          const msg =
+                            err && typeof err === 'object' && 'message' in err
+                              ? String((err as { message: unknown }).message)
+                              : 'Failed to submit dispute. Please check your reason and try again.';
+                          setDisputeError(msg);
                         } finally {
                           setSubmittingDispute(false);
                         }

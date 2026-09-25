@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
+  Bot,
   Building2,
   CheckCircle2,
   ClipboardList,
@@ -10,7 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   PenLine,
-  RefreshCw,
   ScrollText,
   ShieldAlert,
   ShieldBan,
@@ -98,10 +98,10 @@ export const sidebarItems: NavGroup[] = [
         icon: PenLine,
       },
       {
-        id: 'skill-retake',
-        title: 'Skill retake policies',
-        url: '/admin/skills',
-        icon: RefreshCw,
+        id: 'skill-disputes',
+        title: 'Skill disputes',
+        url: '/admin/skills/disputes',
+        icon: ShieldAlert,
       },
     ],
   },
@@ -115,6 +115,7 @@ export const sidebarItems: NavGroup[] = [
         url: '/admin/platform-admins',
         icon: UserCog,
       },
+      { id: 'ai-governance', title: 'AI Governance', url: '/admin/ai-governance', icon: Bot },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
     ],
   },

@@ -142,6 +142,18 @@ const EnvSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
 
+  /** Explicit stub guard for project-defense oral interview evaluation. Never allowed in production. */
+  ENABLE_DEFENSE_STUB: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
+  /** Explicit stub guard for QLIX code plagiarism checking. Never allowed in production. */
+  ENABLE_QLIX_STUB: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
   /** CN-T07 profile activation policy: SEGMENT_AWARE (default) or STRICT_ALL_THREE. */
   PROFILE_ACTIVATION_POLICY: z.enum(['SEGMENT_AWARE', 'STRICT_ALL_THREE']).default('SEGMENT_AWARE'),
 
@@ -200,6 +212,12 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   if (data.NODE_ENV === 'production' && !data.METRICS_SCRAPE_TOKEN) {
     throw new Error('Invalid environment: METRICS_SCRAPE_TOKEN is required in production');
+  }
+  if (data.NODE_ENV === 'production' && data.ENABLE_DEFENSE_STUB) {
+    throw new Error('Invalid environment: ENABLE_DEFENSE_STUB cannot be enabled in production');
+  }
+  if (data.NODE_ENV === 'production' && data.ENABLE_QLIX_STUB) {
+    throw new Error('Invalid environment: ENABLE_QLIX_STUB cannot be enabled in production');
   }
   return data;
 }

@@ -185,4 +185,89 @@ describe('skill-capability-ranker (S6-RM-23)', () => {
     expect(why.length).toBeLessThanOrEqual(WHY_MAX_LENGTH);
     expect(why).toMatch(/Held 2 of 12 required \(10 missing\)/);
   });
+
+  it('MAT-01 / I369: distinguishes mandatory requirements from preferences (missing mandatory reduces score / increases gap, while missing preference allows inclusion with lower score)', () => {
+    // Job with mandatory required skills and capabilities
+    const jobWithPreferences: SkillCapabilityJob = {
+      requiredSkills: [
+        {
+          code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          name: 'Python',
+          minRank: 2,
+          minProficiency: 'INTERMEDIATE',
+        },
+        {
+          code: 'SQL_QUERY_OPTIMIZATION',
+          name: 'SQL',
+          minRank: 1,
+          minProficiency: 'BEGINNER',
+        },
+      ],
+      requiredCapabilities: [
+        {
+          competencyId: '828ed14b-2aca-408b-adc1-78e24f22b09d',
+          capability: 'Python syntax, idioms & standard library',
+          skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          role: 'critical', // Mandatory / Critical
+        },
+        {
+          competencyId: '999ed14b-2aca-408b-adc1-78e24f22b09e',
+          capability: 'PostgreSQL database tuning',
+          skillCode: 'SQL_QUERY_OPTIMIZATION',
+          role: 'supporting', // Preferred / Supporting
+        },
+      ],
+    };
+
+    // Candidate 1: Meets mandatory requirement, missing preferred/supporting capability
+    const candidateWithMandatoryOnly: SkillCapabilityCandidate = {
+      studentId: 'cand-mandatory-only',
+      verified: [
+        { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT', rank: 2, proficiency: 'INTERMEDIATE' },
+        { code: 'SQL_QUERY_OPTIMIZATION', rank: 1, proficiency: 'BEGINNER' },
+      ],
+      competencyResults: [
+        {
+          competencyId: '828ed14b-2aca-408b-adc1-78e24f22b09d',
+          status: 'DEMONSTRATED',
+        },
+      ],
+      inferredCapabilities: [],
+      qlixObservations: [],
+    };
+
+    // Candidate 2: Meets both mandatory and preferred
+    const candidateWithBoth: SkillCapabilityCandidate = {
+      studentId: 'cand-both',
+      verified: [
+        { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT', rank: 2, proficiency: 'INTERMEDIATE' },
+        { code: 'SQL_QUERY_OPTIMIZATION', rank: 1, proficiency: 'BEGINNER' },
+      ],
+      competencyResults: [
+        {
+          competencyId: '828ed14b-2aca-408b-adc1-78e24f22b09d',
+          status: 'DEMONSTRATED',
+        },
+        {
+          competencyId: '999ed14b-2aca-408b-adc1-78e24f22b09e',
+          status: 'DEMONSTRATED',
+        },
+      ],
+      inferredCapabilities: [],
+      qlixObservations: [],
+    };
+
+    const scoreMandatoryOnly = scoreSkillCapabilityCandidate(
+      jobWithPreferences,
+      candidateWithMandatoryOnly,
+    );
+    const scoreBoth = scoreSkillCapabilityCandidate(jobWithPreferences, candidateWithBoth);
+
+    // Candidate missing preferred is still included with valid score
+    expect(scoreMandatoryOnly.rawMatchScore).toBeGreaterThan(0);
+    // But candidate with both scores higher on capability score
+    expect(scoreBoth.capabilityScore).toBeGreaterThan(scoreMandatoryOnly.capabilityScore);
+    // Mandatory candidate has gap in preferred competency
+    expect(scoreMandatoryOnly.gapCompetencies).toContain('PostgreSQL database tuning');
+  });
 });

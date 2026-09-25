@@ -89,11 +89,30 @@ export class AiCircuitBreaker {
   private readonly requestTimeoutMs: number;
 
   private readonly circuits = new Map<AiProvider, ProviderCircuitInfo>();
+  private readonly disabledModels = new Set<string>();
 
   constructor(@Optional() options?: CircuitBreakerOptions) {
     this.failureThreshold = options?.failureThreshold ?? 3;
     this.resetTimeoutMs = options?.resetTimeoutMs ?? 30_000;
     this.requestTimeoutMs = options?.requestTimeoutMs ?? 45_000;
+  }
+
+  isModelDisabled(provider: AiProvider, model: string): boolean {
+    return this.disabledModels.has(`${provider}:${model}`);
+  }
+
+  disableModel(provider: AiProvider, model: string): void {
+    this.disabledModels.add(`${provider}:${model}`);
+    this.logger.warn(`Model version ${model} on ${provider} disabled.`);
+  }
+
+  enableModel(provider: AiProvider, model: string): void {
+    this.disabledModels.delete(`${provider}:${model}`);
+    this.logger.log(`Model version ${model} on ${provider} enabled.`);
+  }
+
+  getDisabledModels(): string[] {
+    return Array.from(this.disabledModels);
   }
 
   private getOrCreate(provider: AiProvider): ProviderCircuitInfo {

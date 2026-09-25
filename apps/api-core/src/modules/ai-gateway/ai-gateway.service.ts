@@ -175,6 +175,31 @@ export class AiGatewayService {
     for (const { provider, adapter } of chain) {
       if (!adapter.isConfigured) continue;
 
+      const targetModel =
+        provider === 'ANTHROPIC'
+          ? request.modelRole === 'FAST_EXTRACTION' ||
+            request.modelRole === 'FALLBACK_FAST' ||
+            request.modelRole === 'EMBEDDING'
+            ? 'claude-3-5-haiku-latest'
+            : 'claude-3-5-sonnet-latest'
+          : provider === 'GOOGLE'
+            ? request.modelRole === 'EMBEDDING'
+              ? 'text-embedding-004'
+              : 'gemini-3.5-flash-lite'
+            : env.OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
+
+      if (this.circuitBreaker.isModelDisabled(provider, targetModel)) {
+        this.logger.warn(
+          `Model ${targetModel} on provider ${provider} is disabled. Trying next provider.`,
+        );
+        attemptedErrors.push({
+          provider,
+          message: `Model ${targetModel} on ${provider} is administratively disabled`,
+          circuitState: this.circuitBreaker.getState(provider),
+        });
+        continue;
+      }
+
       if (!this.circuitBreaker.isCallAllowed(provider)) {
         const state = this.circuitBreaker.getState(provider);
         attemptedErrors.push({
@@ -265,33 +290,21 @@ export class AiGatewayService {
   }
 
   async listAuditLogs() {
-    return {
-      logs: [
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-          promptRef: 'capability-inference@1',
-          provider: 'GOOGLE' as const,
-          model: 'gemini-1.5-pro',
-          promptTokens: 850,
-          completionTokens: 320,
-          latencyMs: 1240,
-          estimatedCostUsd: 0.0012,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-      total: 1,
-    };
+    if (this.usage) {
+      return this.usage.listAuditLogs();
+    }
+    return { logs: [], total: 0 };
   }
 
   async toggleModelVersion(body: unknown) {
     const payload = ToggleModelVersionRequestSchema.parse(body);
     if (!payload.active) {
-      this.circuitBreaker.trip(payload.provider);
+      this.circuitBreaker.disableModel(payload.provider, payload.model);
       this.logger.warn(
         `Targeted model version disable: ${payload.model} on ${payload.provider} disabled. Reason: ${payload.reason}`,
       );
     } else {
-      this.circuitBreaker.reset(payload.provider);
+      this.circuitBreaker.enableModel(payload.provider, payload.model);
       this.logger.log(
         `Targeted model version enable: ${payload.model} on ${payload.provider} enabled.`,
       );
