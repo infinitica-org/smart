@@ -79,7 +79,6 @@ import {
   toPassiveSignalEvidenceDto,
   toProfessionalCredentialDto,
   toProjectSkillMappingDto,
-  toSkillClaimEvidenceLinkDto,
   toVerificationDecisionDto,
 } from './evidence.mapper.js';
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';

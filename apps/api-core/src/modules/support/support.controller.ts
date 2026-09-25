@@ -1,10 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import type {
-  ImpersonateRequest,
   SupportDiagnosticResponse,
-  SupportGrantRequest,
   SupportGrantResponse,
-  SupportHistoryQuery,
   SupportHistoryResponse,
   SupportSessionResponse,
 } from '@smart/contracts';
@@ -18,7 +15,7 @@ import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
-import { SupportService } from './support.service.js';
+import type { SupportService } from './support.service.js';
 
 @Controller('admin/support')
 @UseGuards(JwtAuthGuard, RolesGuard)

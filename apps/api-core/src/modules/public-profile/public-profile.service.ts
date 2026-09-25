@@ -3,10 +3,8 @@ import { Inject, Injectable, NotFoundException, Optional, forwardRef } from '@ne
 import {
   EMPLOYER_VIEWER_ROLES,
   SKILL_DEFINITIONS,
-  TRACK_DEFINITIONS,
   type PublicCandidateProfileDto,
   type PublicProfileLinkResponse,
-  type TrackCode,
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -21,7 +19,6 @@ import { TrustService } from '../trust/trust.service.js';
 const PROFILE_VIEW_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
-const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
 
 /**
  * The public, unauthenticated "know the candidate in one shot" profile —
@@ -362,8 +359,6 @@ export class PublicProfileService {
           })
         : Promise.resolve({ _max: { updatedAt: null } }),
     ]);
-
-    const track: { name: string; category: 'TECH' | 'MBA' } | undefined = undefined;
 
     const isSkillsHidden = hiddenSections.includes('skills');
     const isProjectsHidden = hiddenSections.includes('projects');

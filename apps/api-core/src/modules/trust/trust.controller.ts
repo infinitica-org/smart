@@ -11,7 +11,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { TrustService } from './trust.service.js';
-import { TrustCaseSeverity, TrustCaseStatus } from '../../generated/prisma/index.js';
+import type { TrustCaseSeverity, TrustCaseStatus } from '../../generated/prisma/index.js';
 
 @ApiTags('admin-trust')
 @Controller(`${API_PREFIX}/admin/trust`)

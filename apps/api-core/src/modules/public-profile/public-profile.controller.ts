@@ -1,7 +1,6 @@
 import { Controller, Get, Inject, Param, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
-import type { FastifyRequest } from 'fastify';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Public } from '../../common/guards/public.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';

@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import type { JwtService } from '@nestjs/jwt';
 import type {
   ImpersonateRequest,
   SupportDiagnosticResponse,
@@ -16,10 +16,11 @@ import type {
   SupportSessionResponse,
 } from '@smart/contracts';
 import { SUPPORT_TICKET_ID_REGEX } from '@smart/contracts';
+import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
-import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { RedisService } from '../../platform/redis/redis.service.js';
+import type { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { RedisService } from '../../platform/redis/redis.service.js';
 
 interface RedisGrantPayload {
   grantId: string;
@@ -412,7 +413,7 @@ export class SupportService {
       'support.session_ended',
     ];
 
-    const where: any = {
+    const where: Prisma.AuditLogWhereInput = {
       action: { in: actions },
     };
 
@@ -446,7 +447,7 @@ export class SupportService {
       auditLogId: row.id,
       actorId: row.actorId,
       actorEmail: row.actor?.email ?? null,
-      actorRole: (row.actor?.role as any) ?? null,
+      actorRole: row.actor?.role ?? null,
       action: row.action,
       resourceType: row.resourceType,
       resourceId: row.resourceId,

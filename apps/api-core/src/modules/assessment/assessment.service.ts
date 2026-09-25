@@ -1671,11 +1671,19 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
           success: true,
           data: item,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         failed++;
-        const statusCode = err?.status || err?.statusCode || 500;
-        const code = err?.response?.error || err?.error || 'INTERNAL_ERROR';
-        const message = err?.response?.message || err?.message || 'Failed to process attempt.';
+        const errorObj = err as {
+          status?: number;
+          statusCode?: number;
+          error?: string;
+          message?: string;
+          response?: { error?: string; message?: string };
+        } | null;
+        const statusCode = errorObj?.status || errorObj?.statusCode || 500;
+        const code = errorObj?.response?.error || errorObj?.error || 'INTERNAL_ERROR';
+        const message =
+          errorObj?.response?.message || errorObj?.message || 'Failed to process attempt.';
         results.push({
           id: attemptId,
           success: false,

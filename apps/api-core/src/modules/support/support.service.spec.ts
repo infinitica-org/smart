@@ -162,7 +162,7 @@ describe('SupportService', () => {
       expect(redisEntry).toBeDefined();
       expect(redisEntry?.ttl).toBe(1200);
 
-      const parsedGrant = JSON.parse(redisEntry!.value);
+      const parsedGrant = JSON.parse(redisEntry?.value ?? '{}');
       expect(parsedGrant.targetUserId).toBe(targetUserId);
       expect(parsedGrant.ticketId).toBe('TICK-9999');
       expect(parsedGrant.token).toBeUndefined(); // non-leakage check

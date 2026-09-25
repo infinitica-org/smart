@@ -3,7 +3,6 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { buildPinoHttpOptions } from '@smart/observability';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
-import { AssistedSupportGuard } from './common/guards/assisted-support.guard.js';
 import { FeatureFlagGuard } from './common/guards/feature-flag.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
@@ -103,6 +102,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     AnalyticsModule,
     WebhooksModule,
     TrustModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

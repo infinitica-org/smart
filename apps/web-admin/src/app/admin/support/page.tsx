@@ -7,11 +7,9 @@ import {
   Eye,
   History,
   LifeBuoy,
-  Lock,
   LogOut,
   Search,
   ShieldAlert,
-  Unlock,
   User,
   X,
 } from 'lucide-react';

@@ -1,6 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import type { Queue } from 'bullmq';
 import {
   AppealStatus,
   EnforcementActionType,
@@ -8,10 +8,10 @@ import {
   NotificationKind,
   TrustCaseSeverity,
   TrustCaseStatus,
-  TrustReportCategory,
   TrustReportStatus,
 } from '../../generated/prisma/index.js';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { TrustReportCategory } from '../../generated/prisma/index.js';
+import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { SCORE_RECALCULATION_QUEUE } from '../../platform/queue/queue.names.js';
 import type {

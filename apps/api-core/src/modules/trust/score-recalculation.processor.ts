@@ -1,9 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import type { Job } from 'bullmq';
 import { SCORE_RECALCULATION_QUEUE } from '../../platform/queue/queue.names.js';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { PublicProfileService } from '../public-profile/public-profile.service.js';
+import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { PublicProfileService } from '../public-profile/public-profile.service.js';
 
 export interface ScoreRecalculationJobData {
   candidateId: string;

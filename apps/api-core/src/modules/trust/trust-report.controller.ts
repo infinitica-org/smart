@@ -10,7 +10,7 @@ import { Public } from '../../common/guards/public.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { TrustService } from './trust.service.js';
-import { TrustReportCategory, TrustReportStatus } from '../../generated/prisma/index.js';
+import type { TrustReportCategory, TrustReportStatus } from '../../generated/prisma/index.js';
 
 @ApiTags('trust-reports')
 @Controller(API_PREFIX)

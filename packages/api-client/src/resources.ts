@@ -80,7 +80,6 @@ import type {
   ResolveTrustAppealRequestDto,
   SubmitTrustReportRequestDto,
   ResolveTrustReportRequestDto,
-  ReviewEvidenceResponse,
   ImpersonateRequest,
   SupportDiagnosticResponse,
   SupportGrantRequest,

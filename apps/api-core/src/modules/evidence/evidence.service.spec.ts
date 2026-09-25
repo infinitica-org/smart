@@ -572,7 +572,7 @@ describe('EvidenceService credentials: isolation and validation (STU-02)', () =>
   });
 
   it('does not let a student attach a document to someone else’s credential', async () => {
-    const { service, storageService } = buildService({
+    const { service } = buildService({
       prisma: {
         professionalCredential: {
           findFirst: vi.fn().mockResolvedValue(null),

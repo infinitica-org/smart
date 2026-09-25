@@ -351,7 +351,7 @@ export default function TrustHubPage() {
                 {item.candidateId.slice(0, 8)}...
               </TableCell>
               <TableCell>
-                <SeverityBadge severity={item.severity as any} />
+                <SeverityBadge severity={item.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'} />
               </TableCell>
               <TableCell>
                 <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-zinc-800">
@@ -542,7 +542,16 @@ export default function TrustHubPage() {
                   className="w-full h-9 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold"
                   value={enforceModal.actionType}
                   onChange={(e) =>
-                    setEnforceModal({ ...enforceModal, actionType: e.target.value as any })
+                    setEnforceModal({
+                      ...enforceModal,
+                      actionType: e.target.value as
+                        | 'WARN'
+                        | 'RESTRICT_ASSESSMENTS'
+                        | 'SUSPEND_VERIFICATION'
+                        | 'VOID_ATTEMPT'
+                        | 'VOID_CREDENTIAL'
+                        | 'BAN_ACCOUNT',
+                    })
                   }
                 >
                   <option value="WARN">WARN — Send Official Advisory Notice</option>
@@ -657,7 +666,11 @@ export default function TrustHubPage() {
                   className="w-full h-9 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold"
                   value={reportModal.status}
                   onChange={(e) =>
-                    setReportModal({ ...reportModal, status: e.target.value as any })
+                    setReportModal({
+                      ...reportModal,
+                      status: e.target.value as
+                        'ACTION_TAKEN' | 'INVESTIGATING' | 'DISMISSED_INVALID',
+                    })
                   }
                 >
                   <option value="ACTION_TAKEN">ACTION_TAKEN — Action Taken</option>
