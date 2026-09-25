@@ -275,6 +275,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /evaluation/skill-form/run-code": "evaluation.skillInterview",
   "POST /evaluation/skill-interview/grade": "evaluation.skillInterview",
   "POST /evaluation/skill-interview/questions": "evaluation.skillInterview",
+  "POST /me/company-reviews": "role.student",
   "POST /partnerships/requests": "auth.login",
   "POST /placement/applications": "placement.application",
   "POST /placement/applications/:applicationId/send-to-company": "placement.application",

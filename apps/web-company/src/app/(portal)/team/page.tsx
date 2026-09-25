@@ -334,7 +334,7 @@ export default function TeammatesPage() {
             {reassignCandidates.length > 0 ? (
               <div>
                 <label htmlFor="reassign" className={label}>
-                  Hand over their open candidates and conversations to
+                  Hand over their draft and open job postings to
                 </label>
                 <select
                   id="reassign"

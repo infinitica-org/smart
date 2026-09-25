@@ -5,6 +5,7 @@ import {
   CompanyReviewSchema,
   ListCompanyReviewsResponseSchema,
   type RespondToReviewRequest,
+  type CreateCompanyReviewRequest,
   LocationSearchResponseSchema,
   type DeactivateCompanyMemberRequest,
   type InviteRecruiterRequest,
@@ -1900,6 +1901,13 @@ function employerApi(client: SmartApiClient) {
 /** Public company profile (verified companies only; anyone may read). */
 function companiesApi(client: SmartApiClient) {
   return {
+    /** A student reviews a company they applied to (Th6-355). */
+    createReview: (body: CreateCompanyReviewRequest, idempotencyKey: string) =>
+      client.post(prefixed('/me/company-reviews'), body, {
+        schema: CompanyReviewSchema,
+        headers: { 'idempotency-key': idempotencyKey },
+      }),
+
     getPublic: (idOrSlug: string) =>
       client.get(prefixed(`/companies/${encodeURIComponent(idOrSlug)}`), {
         schema: CompanyProfileSchema,

@@ -31,6 +31,7 @@ import {
   sortApplications,
 } from '../../lib/my-applications';
 import { ApplicationStageTimeline } from './ApplicationStageTimeline';
+import { ReviewCompanyDialog } from './ReviewCompanyDialog';
 
 export type EndorsementFilter = 'All' | 'Confirmed' | 'Awaiting' | 'Declined/Expired';
 
@@ -55,6 +56,7 @@ export function MyApplicationsTracker({
   initialTab?: 'endorsements' | 'applications';
 }) {
   const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>(initialTab);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [endorsementFilter, setEndorsementFilter] = useState<EndorsementFilter>('All');
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [experiencesLoading, setExperiencesLoading] = useState(true);
@@ -593,7 +595,24 @@ export function MyApplicationsTracker({
                     <span className="text-xs text-zinc-400">
                       Applied {formatAppliedOn(selectedApp.createdAt)}
                     </span>
+                    {selectedApp.companyId ? (
+                      <button
+                        type="button"
+                        className="ml-auto text-xs font-semibold text-blue-700 hover:underline"
+                        onClick={() => setReviewOpen(true)}
+                      >
+                        Review this company
+                      </button>
+                    ) : null}
                   </div>
+                  {selectedApp.companyId ? (
+                    <ReviewCompanyDialog
+                      open={reviewOpen}
+                      onClose={() => setReviewOpen(false)}
+                      companyId={selectedApp.companyId}
+                      companyName={selectedApp.companyName}
+                    />
+                  ) : null}
 
                   <h2 className="mt-4 font-heading text-xl font-bold text-zinc-950 dark:text-white sm:text-2xl">
                     {selectedApp.roleTitle}

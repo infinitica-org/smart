@@ -5,6 +5,7 @@ CREATE TYPE "CompanyReviewStatus" AS ENUM ('PUBLISHED', 'HIDDEN');
 CREATE TABLE "company_reviews" (
     "id" UUID NOT NULL,
     "company_id" UUID NOT NULL,
+    "author_id" UUID NOT NULL,
     "author_label" TEXT NOT NULL,
     "rating" INTEGER NOT NULL,
     "body" TEXT NOT NULL,
@@ -27,6 +28,9 @@ CREATE TABLE "review_responses" (
 
     CONSTRAINT "review_responses_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "company_reviews_company_id_author_id_key" ON "company_reviews"("company_id", "author_id");
 
 -- CreateIndex
 CREATE INDEX "company_reviews_company_id_created_at_idx" ON "company_reviews"("company_id", "created_at");

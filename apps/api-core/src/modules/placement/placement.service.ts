@@ -212,6 +212,7 @@ interface ApplicationRow {
 
 interface CandidateApplicationRow extends ApplicationRow {
   opening: {
+    companyId?: string | null;
     companyName: string;
     roleTitle: string;
     location: string | null;
@@ -686,6 +687,7 @@ export class PlacementService {
       include: {
         opening: {
           select: {
+            companyId: true,
             companyName: true,
             roleTitle: true,
             location: true,
@@ -1082,6 +1084,7 @@ export function toCandidateApplicationDto(row: CandidateApplicationRow): Candida
 
   return CandidateApplicationDtoSchema.parse({
     ...toApplicationDto(row),
+    companyId: row.opening.companyId ?? null,
     companyVerified,
     companyVerifiedAt: companyVerified
       ? (company?.verifications[0]?.reviewedAt?.toISOString() ?? null)

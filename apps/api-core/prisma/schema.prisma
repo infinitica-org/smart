@@ -1006,7 +1006,9 @@ model CompanyReview {
   id                String              @id @default(uuid()) @db.Uuid
   companyId         String              @map("company_id") @db.Uuid
   company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  /// Display label only (e.g. "Verified intern"); the reviewer's identity is not exposed to the company.
+  /// The reviewing student; one review per student per company. Never exposed to the company.
+  authorId          String              @map("author_id") @db.Uuid
+  /// Display label only (e.g. "Applicant"); the reviewer's identity is not exposed to the company.
   authorLabel       String              @map("author_label")
   rating            Int
   body              String              @db.Text
@@ -1015,6 +1017,7 @@ model CompanyReview {
   createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   response          ReviewResponse?
 
+  @@unique([companyId, authorId])
   @@index([companyId, createdAt])
   @@map("company_reviews")
 }

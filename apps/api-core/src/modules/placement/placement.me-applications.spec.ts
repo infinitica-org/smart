@@ -80,6 +80,7 @@ describe('CN-T06 list my applications', () => {
       include: {
         opening: {
           select: {
+            companyId: true,
             companyName: true,
             roleTitle: true,
             location: true,

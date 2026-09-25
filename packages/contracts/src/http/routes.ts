@@ -917,6 +917,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Upload the company logo (JPG/PNG, 2MB) before saving the profile (Th6-349).',
   },
   {
+    method: 'POST',
+    path: '/me/company-reviews',
+    module: 'company-profile',
+    owner: 'Th6-EMP-02',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Review a company you applied to; you choose whether it may respond (Th6-355).',
+  },
+  {
     method: 'GET',
     path: '/employer/reviews',
     module: 'company-profile',

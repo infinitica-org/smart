@@ -224,7 +224,11 @@ export class CompanyTeamService {
           where: { userId: member.id, revokedAt: null },
           data: { revokedAt: deactivatedAt },
         });
-        await this.reassignOpenWork(tx, { fromMemberId: member.id, toMemberId: reassignTo });
+        const reassignedOpenings = await this.reassignOpenWork(tx, {
+          companyId: actor.companyId,
+          fromMemberId: member.id,
+          toMemberId: reassignTo,
+        });
         // A deactivated invitee can no longer accept a pending invitation.
         await tx.invitation.updateMany({
           where: { userId: member.id, status: 'PENDING' },
@@ -243,6 +247,7 @@ export class CompanyTeamService {
               before: { active: true },
               after: { active: false },
               reassignedTo: reassignTo,
+              reassignedOpenings,
             },
           },
         });
@@ -288,16 +293,25 @@ export class CompanyTeamService {
   }
 
   /**
-   * Hand the deactivated recruiter's open candidates and conversations to a teammate.
-   * TODO(EMP-02 / Th6-353): candidate assignment and employer messaging do not exist as tables yet.
-   * When they land, move `fromMemberId`'s open rows to `toMemberId` here so it commits atomically with
-   * the deactivation above.
+   * Hand the deactivated recruiter's open work to the chosen teammate, in the same transaction.
+   * Draft and open job openings they created move to the teammate. Candidate assignment and employer
+   * messaging have no tables yet (TODO(Th6-353): move those rows here when they land); applications
+   * hang off the openings, so candidates follow the openings automatically.
    */
   private async reassignOpenWork(
-    _tx: Prisma.TransactionClient,
-    _params: { fromMemberId: string; toMemberId: string | null },
-  ): Promise<void> {
-    await Promise.resolve();
+    tx: Prisma.TransactionClient,
+    params: { companyId: string; fromMemberId: string; toMemberId: string | null },
+  ): Promise<number> {
+    if (!params.toMemberId) return 0;
+    const moved = await tx.jobOpening.updateMany({
+      where: {
+        companyId: params.companyId,
+        createdById: params.fromMemberId,
+        status: { in: ['DRAFT', 'OPEN'] },
+      },
+      data: { createdById: params.toMemberId },
+    });
+    return moved.count;
   }
 
   private async requireMember(

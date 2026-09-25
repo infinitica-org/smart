@@ -72,6 +72,7 @@ describe('CompanyTeamService (Th6-351/352/353)', () => {
       },
       refreshToken: { updateMany: vi.fn().mockResolvedValue({ count: 2 }) },
       invitation: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      jobOpening: { updateMany: vi.fn().mockResolvedValue({ count: 3 }) },
     });
     prisma = ledger.prisma;
     invitations = {
@@ -259,6 +260,30 @@ describe('CompanyTeamService (Th6-351/352/353)', () => {
       const audit = prisma.auditLog.create.mock.calls[0]?.[0].data;
       expect(audit).toMatchObject({ action: 'company.member_deactivated', reasonCode: 'left' });
       expect(audit.metadata).toMatchObject({ reassignedTo: IDS.recruiter2 });
+    });
+
+    it("moves the member's draft/open job openings to the chosen teammate in the same transaction", async () => {
+      await service.deactivate(IDS.owner, {
+        key: 'd-move',
+        memberId: IDS.recruiter,
+        body: { reassignToMemberId: IDS.recruiter2 },
+      });
+      expect(prisma.jobOpening.updateMany).toHaveBeenCalledWith({
+        where: {
+          companyId: IDS.companyA,
+          createdById: IDS.recruiter,
+          status: { in: ['DRAFT', 'OPEN'] },
+        },
+        data: { createdById: IDS.recruiter2 },
+      });
+      expect(prisma.auditLog.create.mock.calls[0]?.[0].data.metadata).toMatchObject({
+        reassignedOpenings: 3,
+      });
+    });
+
+    it('does not touch job openings when no teammate is chosen', async () => {
+      await service.deactivate(IDS.owner, { key: 'd-none', memberId: IDS.recruiter, body: {} });
+      expect(prisma.jobOpening.updateMany).not.toHaveBeenCalled();
     });
 
     it('cannot deactivate yourself', async () => {

@@ -12,6 +12,7 @@ vi.mock('@/lib/api', () => ({
     placement: {
       listMyApplications: (...args: unknown[]) => listMyApplications(...args),
     },
+    companies: { createReview: vi.fn() },
     users: {
       listWorkExperiences: (...args: unknown[]) => listWorkExperiences(...args),
     },
@@ -87,6 +88,19 @@ describe('MyApplicationsTracker', () => {
     expect(screen.getAllByTestId('verified-badge')[0]?.getAttribute('aria-label')).toBe(
       'SMART verified this company on 1 Sep 2026',
     );
+  });
+
+  it('offers a company review only for openings linked to a company (Th6-355)', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [application({ companyId: '11111111-1111-4111-8111-111111111111' })],
+    });
+    renderTracker();
+    expect(await screen.findByRole('button', { name: 'Review this company' })).toBeTruthy();
+    cleanup();
+    listMyApplications.mockResolvedValue({ applications: [application({ companyId: null })] });
+    renderTracker();
+    await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: 'Review this company' })).toBeNull();
   });
 
   it('hides the verified badge for an unverified or unknown company (Th6-354)', async () => {

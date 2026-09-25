@@ -15,6 +15,24 @@ export const RespondToReviewRequestSchema = z.object({
 });
 export type RespondToReviewRequest = z.infer<typeof RespondToReviewRequestSchema>;
 
+/** Student-side submission (Th6-355). The reviewer decides whether the company may respond. */
+export const CREATE_REVIEW_BODY_MAX_LENGTH = 2000;
+export const CreateCompanyReviewRequestSchema = z.object({
+  companyId: UuidSchema,
+  rating: z
+    .number()
+    .int()
+    .min(1, 'Choose a rating from 1 to 5.')
+    .max(5, 'Choose a rating from 1 to 5.'),
+  body: z
+    .string()
+    .trim()
+    .min(10, 'Write at least 10 characters.')
+    .max(CREATE_REVIEW_BODY_MAX_LENGTH),
+  allowCompanyResponse: z.boolean().default(false),
+});
+export type CreateCompanyReviewRequest = z.infer<typeof CreateCompanyReviewRequestSchema>;
+
 export const CompanyReviewSchema = z.object({
   id: UuidSchema,
   rating: z.number().int().min(1).max(5),
