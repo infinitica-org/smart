@@ -86,7 +86,13 @@ describe('CompaniesService', () => {
         },
       });
       expect(prismaMock.organization.create).toHaveBeenCalledWith({
-        data: { name: 'Acme Corp', domain: 'acme.com', verificationStatus: 'APPROVED' },
+        data: {
+          name: 'Acme Corp',
+          domain: 'acme.com',
+          verificationStatus: 'APPROVED',
+          createdById: 'actor-1',
+          updatedById: 'actor-1',
+        },
       });
     });
 
@@ -173,8 +179,78 @@ describe('CompaniesService', () => {
         where: { OR: [{ name: { equals: 'No Website Inc', mode: 'insensitive' } }] },
       });
       expect(prismaMock.organization.create).toHaveBeenCalledWith({
-        data: { name: 'No Website Inc', domain: null, verificationStatus: 'APPROVED' },
+        data: {
+          name: 'No Website Inc',
+          domain: null,
+          verificationStatus: 'APPROVED',
+          createdById: 'actor-1',
+          updatedById: 'actor-1',
+        },
       });
+    });
+  });
+
+  describe('created / modified by (S6-VV-105)', () => {
+    const companyRow = {
+      id: 'company-9',
+      organizationId: null,
+      name: 'Acme Corp',
+      domain: 'acme-corp',
+      taxonomyDomain: null,
+      website: null,
+      sector: null,
+      mode: null,
+      sizeBand: null,
+      location: null,
+      verificationStatus: 'APPROVED',
+      verificationReason: null,
+      heldAt: null,
+      deactivatedAt: null,
+      createdAt: new Date('2026-01-01'),
+      plan: freePlan,
+      createdById: 'admin-a',
+      updatedById: 'admin-b',
+    };
+
+    it('stamps the creating admin on the company it creates', async () => {
+      prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' });
+      prismaMock.company.create.mockResolvedValue({ id: 'company-9' });
+      prismaMock.company.findUnique.mockImplementation((args: any) =>
+        Promise.resolve(args.where.id === 'company-9' ? companyRow : null),
+      );
+      prismaMock.user.findMany = vi.fn().mockResolvedValue([]);
+
+      await service.createCompany({ name: 'Acme Corp' } as any, 'admin-a');
+
+      expect(prismaMock.company.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ createdById: 'admin-a', updatedById: 'admin-a' }),
+      });
+    });
+
+    it('stamps the admin who holds a company as its last modifier', async () => {
+      prismaMock.company.findUnique.mockResolvedValue(companyRow);
+      prismaMock.company.update = vi.fn().mockResolvedValue(companyRow);
+      prismaMock.user.findMany = vi.fn().mockResolvedValue([]);
+
+      await service.holdCompany('company-9', { reason: 'fraud review' } as any, 'admin-c');
+
+      expect(prismaMock.company.update).toHaveBeenCalledWith({
+        where: { id: 'company-9' },
+        data: { heldAt: expect.any(Date), updatedById: 'admin-c' },
+      });
+    });
+
+    it('returns who created and last modified the company on the detail view', async () => {
+      prismaMock.company.findUnique.mockResolvedValue(companyRow);
+      prismaMock.user.findMany = vi.fn().mockResolvedValue([
+        { id: 'admin-a', email: 'a@smart.test' },
+        { id: 'admin-b', email: 'b@smart.test' },
+      ]);
+
+      const dto = await service.getCompany('company-9');
+
+      expect(dto.createdBy).toEqual({ userId: 'admin-a', email: 'a@smart.test' });
+      expect(dto.updatedBy).toEqual({ userId: 'admin-b', email: 'b@smart.test' });
     });
   });
 });

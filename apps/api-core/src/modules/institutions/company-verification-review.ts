@@ -247,6 +247,7 @@ export async function resolveCompanyVerification(
       data: {
         verificationStatus: body.decision,
         verificationReason: body.reason,
+        updatedById: actorId,
         ...(pro ? { planId: pro.id } : {}),
       },
     });
