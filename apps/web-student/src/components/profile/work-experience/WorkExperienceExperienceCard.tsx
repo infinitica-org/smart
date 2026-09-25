@@ -89,6 +89,9 @@ export type WorkExperienceExperienceCardProps = {
   sendingVerificationId: string | null;
   verificationResendRemainingMs: number;
   sendingEndorsementId: string | null;
+  resendingManagerId: string | null;
+  managerResendRemainingMs: number;
+  onResendManagerEndorsement?: (experienceId: string) => void;
   onEdit: (exp: WorkExperienceDto, options?: { focusVerification?: boolean }) => void;
   onDelete: (id: string) => void;
   onSendVerification: (experienceId: string, exp: WorkExperienceDto) => void;
@@ -99,9 +102,6 @@ export type WorkExperienceExperienceCardProps = {
   onValidateProof: (expId: string, docId: string) => void;
   onRemoveDocument: (expId: string, docId: string) => void;
   onAttachProof: (expId: string) => void;
-  onResendManagerEndorsement?: (experienceId: string) => void;
-  resendingManagerId?: string | null;
-  managerResendRemainingMs?: number;
 };
 
 export function WorkExperienceExperienceCard({
@@ -112,6 +112,9 @@ export function WorkExperienceExperienceCard({
   sendingVerificationId,
   verificationResendRemainingMs,
   sendingEndorsementId,
+  resendingManagerId,
+  managerResendRemainingMs,
+  onResendManagerEndorsement,
   onEdit,
   onDelete,
   onSendVerification,
@@ -119,9 +122,6 @@ export function WorkExperienceExperienceCard({
   onValidateProof,
   onRemoveDocument,
   onAttachProof,
-  onResendManagerEndorsement,
-  resendingManagerId = null,
-  managerResendRemainingMs = 0,
 }: WorkExperienceExperienceCardProps) {
   const accent =
     WORK_EXPERIENCE_CARD_ACCENTS[accentIndex % WORK_EXPERIENCE_CARD_ACCENTS.length] ??

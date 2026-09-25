@@ -457,6 +457,49 @@ services:
       - "127.0.0.1:${COMPANY_PORT:-3006}:3000"
     profiles: ["apps"]
 
+  # S6-VV-97 — nightly encrypted, off-box backup of Postgres + MinIO objects.
+  # Idles (smart_backup_enabled 0) until BACKUP_ENABLED=true and the BACKUP_*
+  # vars are set; see docs/delivery/BACKUP_RESTORE.md. On demand:
+  #   docker compose ... --profile vps run --rm backup backup.sh
+  backup:
+    build:
+      context: ../backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-false}
+      BACKUP_ENV_NAME: ${BACKUP_ENV_NAME:-local}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-30 20 * * *}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_DEST: ${BACKUP_DEST:-offsite:smart-backups}
+      BACKUP_INCLUDE_OBJECTS: ${BACKUP_INCLUDE_OBJECTS:-true}
+      PGHOST: postgres
+      PGUSER: smart
+      PGDATABASE: smart
+      PGPASSWORD: ${POSTGRES_PASSWORD:-smart}
+      MINIO_BUCKET: smart
+      RCLONE_CONFIG_MINIO_TYPE: s3
+      RCLONE_CONFIG_MINIO_PROVIDER: Minio
+      RCLONE_CONFIG_MINIO_ENDPOINT: http://minio:9000
+      RCLONE_CONFIG_MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-smart}
+      RCLONE_CONFIG_MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
+      RCLONE_CONFIG_OFFSITE_TYPE: s3
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${BACKUP_S3_PROVIDER:-Other}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      RCLONE_CONFIG_OFFSITE_REGION: ${BACKUP_S3_REGION:-}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      # Upload without needing bucket-create/list-buckets permission.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: "true"
+    volumes:
+      - backup_work:/work
+      - backup_metrics:/metrics
+    profiles: ["vps"]
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
@@ -620,11 +663,14 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - backup_metrics:/textfile:ro
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
       - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+      # S6-VV-97: exposes smart_backup_* written by the backup service.
+      - --collector.textfile.directory=/textfile
     ports:
       - "127.0.0.1:${NODE_EXPORTER_PORT:-9101}:9100"
     profiles: ["obs"]
@@ -665,3 +711,5 @@ volumes:
   loki_data:
   alloy_data:
   tempo_data:
+  backup_work:
+  backup_metrics:

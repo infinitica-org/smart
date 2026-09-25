@@ -68,6 +68,33 @@ export class PlacementController {
     @Inject(EvidenceService) private readonly evidence: EvidenceService,
   ) {}
 
+  @Get('candidates/:studentId/evidence')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get candidate evidence records categorized by provenance (VER-01).' })
+  getCandidateEvidenceProvenance(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.evidence.getCandidateEvidenceProvenance(user, studentId);
+  }
+
+  @Post('candidates/:studentId/evidence/:evidenceId/review')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Reviewer marks candidate evidence accepted, rejected, or needing information (VER-01).',
+  })
+  reviewCandidateEvidence(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('evidenceId') evidenceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.evidence.reviewEvidence(user, studentId, evidenceId, body);
+  }
+
   @Get('candidates/:studentId/evidence/:evidenceId/versions')
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
   @ApiBearerAuth()

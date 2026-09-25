@@ -20,6 +20,7 @@ import {
   ViewCandidateRequestSchema,
 } from '@smart/contracts';
 import { Roles } from '../../common/guards/roles.decorator.js';
+import { RequirePermission } from '../../common/guards/permissions.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { InstitutionsService } from './institutions.service.js';
@@ -157,6 +158,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('audit-logs')
+  @RequirePermission('audit.read')
   auditLogs(@Query() query: Record<string, string | undefined>) {
     return this.institutions.listAuditLogs(ListAuditLogsQuerySchema.parse(compactQuery(query)));
   }
