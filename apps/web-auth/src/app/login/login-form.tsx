@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
 import { EMAIL_NOT_VERIFIED_ERROR } from '@smart/contracts';
-import { SmartLogo } from '@smart/ui';
 import { EyeIcon, EyeOffIcon } from '../../components/auth-icons';
 import { ResendVerification } from '../../components/resend-verification';
 import { api, redirectForRole, storeSession } from '../../lib/api';
