@@ -48,6 +48,18 @@ export class DataRequestsAdminController {
     return this.requests.resolve(requestId, user.sub, 'COMPLETED', note);
   }
 
+  /** S6-VV-117 — approve a DELETION; the erasure job completes it. */
+  @Post(':requestId/erase')
+  @RequirePermission('dsr.fulfil')
+  erase(
+    @Param('requestId') requestId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    const { note } = ResolveDataRequestSchema.parse(body);
+    return this.requests.approveErasure(requestId, user.sub, note);
+  }
+
   @Post(':requestId/reject')
   @RequirePermission('dsr.fulfil')
   reject(

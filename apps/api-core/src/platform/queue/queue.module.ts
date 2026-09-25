@@ -26,6 +26,8 @@ import {
   DEFAULT_JOB_OPTIONS,
   JD_PARSE_DLQ,
   DSR_EXPORT_DLQ,
+  DSR_ERASURE_DLQ,
+  DSR_ERASURE_QUEUE,
   DSR_EXPORT_QUEUE,
   JD_PARSE_QUEUE,
   SKILL_VERIFY_GRADE_DLQ,
@@ -68,6 +70,8 @@ const queues = [
   { name: SCORE_RECALCULATION_DLQ },
   { name: DSR_EXPORT_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: DSR_EXPORT_DLQ },
+  { name: DSR_ERASURE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: DSR_ERASURE_DLQ },
 ];
 
 @Global()

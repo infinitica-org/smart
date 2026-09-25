@@ -15,7 +15,7 @@ const LINK_TTL_SECONDS = 15 * 60;
  * The student's own records. Rows that mainly describe other people (profile views by employers,
  * reviews they received, trust cases opened by admins) are left out.
  */
-const STUDENT_OWNED = {
+export const STUDENT_OWNED = {
   attempts: true,
   certificates: true,
   placements: true,

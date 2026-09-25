@@ -247,6 +247,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /admin/companies/:companyId/restore": "role.superAdmin",
   "POST /admin/corroboration/review-flags/:id/resolve": "corroboration.adminFlags",
   "POST /admin/data-requests/:requestId/complete": "role.superAdmin",
+  "POST /admin/data-requests/:requestId/erase": "role.superAdmin",
   "POST /admin/data-requests/:requestId/reject": "role.superAdmin",
   "POST /admin/data-requests/:requestId/start-review": "role.superAdmin",
   "POST /admin/evidence-skill-disputes/:disputeId/resolve": "role.institutionAdmin",

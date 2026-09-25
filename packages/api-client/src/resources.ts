@@ -1065,7 +1065,7 @@ export function onboardingApi(client: SmartApiClient) {
 
     resolveDataRequest: (
       requestId: string,
-      outcome: 'complete' | 'reject',
+      outcome: 'complete' | 'reject' | 'erase',
       body: ResolveDataRequest,
     ) =>
       client.post(prefixed(`/admin/data-requests/${requestId}/${outcome}`), body, {

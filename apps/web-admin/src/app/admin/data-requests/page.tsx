@@ -67,10 +67,18 @@ export default function DataRequestsPage() {
     void load();
   }, [load]);
 
-  async function act(row: AdminDataRequestDto, action: 'review' | 'complete' | 'reject') {
+  async function act(row: AdminDataRequestDto, action: 'review' | 'complete' | 'reject' | 'erase') {
     setError(null);
     if (action !== 'review' && note.trim().length < 8) {
       setError('Write a note of at least 8 characters. The student will see it.');
+      return;
+    }
+    if (
+      action === 'erase' &&
+      !window.confirm(
+        `Erase ${row.userFullName}'s data? Their files and personal records are deleted and their account is anonymized. This cannot be undone.`,
+      )
+    ) {
       return;
     }
     setBusyId(row.id);
@@ -192,6 +200,16 @@ export default function DataRequestsPage() {
                           onClick={() => void act(row, 'complete')}
                         >
                           Complete
+                        </Button>
+                      ) : null}
+                      {row.type === 'DELETION' ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={busyId === row.id}
+                          onClick={() => void act(row, 'erase')}
+                        >
+                          Erase data
                         </Button>
                       ) : null}
                       <Button

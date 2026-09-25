@@ -150,4 +150,35 @@ describe('S6-VV-116 data-request queue', () => {
     });
     expect(audit.record).not.toHaveBeenCalled();
   });
+
+  it('approving an erasure moves the request into review and queues the job (S6-VV-117)', async () => {
+    const erasureQueue = { add: vi.fn().mockResolvedValue(undefined) };
+    service = new DataRequestsAdminService(prisma, audit, notifications, erasureQueue as never);
+    prisma.dataSubjectRequest.findUnique.mockResolvedValue(row({ type: 'DELETION' }));
+
+    await service.approveErasure(requestId, adminId, 'No retention hold applies.');
+
+    expect(prisma.dataSubjectRequest.updateMany.mock.calls[0][0].data.status).toBe('IN_REVIEW');
+    expect(erasureQueue.add).toHaveBeenCalledWith(
+      'erase',
+      { requestId, actorId: adminId, note: 'No retention hold applies.' },
+      { jobId: `erasure-${requestId}` },
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'data_request.erasure_approved' }),
+    );
+  });
+
+  it('only erases open deletion requests (S6-VV-117)', async () => {
+    prisma.dataSubjectRequest.findUnique.mockResolvedValue(row({ type: 'CORRECTION' }));
+    await expect(service.approveErasure(requestId, adminId, 'note note')).rejects.toMatchObject({
+      response: { error: 'not_deletion' },
+    });
+    prisma.dataSubjectRequest.findUnique.mockResolvedValue(
+      row({ type: 'DELETION', status: 'REJECTED' }),
+    );
+    await expect(service.approveErasure(requestId, adminId, 'note note')).rejects.toMatchObject({
+      response: { error: 'already_resolved' },
+    });
+  });
 });

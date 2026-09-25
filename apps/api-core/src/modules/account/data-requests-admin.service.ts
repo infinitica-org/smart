@@ -1,4 +1,6 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { ConflictException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import {
   DSR_SLA_CLOSE_DAYS,
   DSR_SLA_FIRST_RESPONSE_DAYS,
@@ -10,7 +12,9 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { DSR_ERASURE_QUEUE } from '../../platform/queue/queue.names.js';
 import { toDataRequest } from './account.service.js';
+import type { DsrErasureJobPayload } from './dsr-erasure.processor.js';
 
 const DAY_MS = 86_400_000;
 const WITH_USER = { user: { select: { email: true, fullName: true } } } as const;
@@ -34,6 +38,9 @@ export class DataRequestsAdminService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(NotificationsService) private readonly notifications: NotificationsService,
+    @Optional()
+    @InjectQueue(DSR_ERASURE_QUEUE)
+    private readonly erasureQueue?: Queue<DsrErasureJobPayload>,
   ) {}
 
   async list(query: ListAdminDataRequestsQuery = {}): Promise<AdminDataRequestDto[]> {
@@ -84,6 +91,41 @@ export class DataRequestsAdminService {
       );
     }
     return this.transition(request, actorId, outcome, note);
+  }
+
+  /**
+   * S6-VV-117 — approve a DELETION: the request moves into review (if it wasn't) and the erasure
+   * job completes it. The student is told now, while their email still exists.
+   */
+  async approveErasure(
+    requestId: string,
+    actorId: string,
+    note: string,
+  ): Promise<AdminDataRequestDto> {
+    const request = await this.require(requestId);
+    if (request.type !== 'DELETION') {
+      throw conflict('not_deletion', 'Only a deletion request can be erased.');
+    }
+    if (request.status === 'COMPLETED' || request.status === 'REJECTED') {
+      throw conflict('already_resolved', 'This request is already closed and cannot change.');
+    }
+    const dto =
+      request.status === 'OPEN' ? await this.transition(request, actorId, 'IN_REVIEW', null) : null;
+    if (!this.erasureQueue) throw new Error('Erasure queue is not configured');
+    await this.erasureQueue.add(
+      'erase',
+      { requestId, actorId, note },
+      { jobId: `erasure-${requestId}` },
+    );
+    await this.auditPublisher.record({
+      actorId,
+      action: 'data_request.erasure_approved',
+      resourceType: 'data_subject_request',
+      resourceId: requestId,
+      reasonCode: note,
+      metadata: { userId: request.userId },
+    });
+    return dto ?? this.get(requestId);
   }
 
   private async transition(

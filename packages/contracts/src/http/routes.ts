@@ -4673,6 +4673,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/admin/data-requests/:requestId/erase',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'ASYNC',
+    slaMs: 150,
+    summary: 'Approve a deletion request; the erasure job completes it (S6-VV-117).',
+  },
+  {
+    method: 'POST',
     path: '/admin/data-requests/:requestId/reject',
     module: 'users',
     owner: 'Vishal V',
