@@ -2739,8 +2739,13 @@ model DataSubjectRequest {
   resolvedAt DateTime?                @map("resolved_at") @db.Timestamptz(6)
   /// S6-VV-115 — storage key of the finished EXPORT bundle.
   exportKey  String?                  @map("export_key")
+  /// S6-VV-116 — admin handling: first response (for the SLA), the note shown to the student, who closed it.
+  firstRespondedAt DateTime? @map("first_responded_at") @db.Timestamptz(6)
+  resolution       String?
+  resolvedById     String?   @map("resolved_by_id") @db.Uuid
 
   @@index([userId, type, status])
+  @@index([status, createdAt])
   @@map("data_subject_requests")
 }
 

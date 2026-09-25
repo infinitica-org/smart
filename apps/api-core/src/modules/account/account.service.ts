@@ -46,13 +46,14 @@ function pickAudited(info: PersonalInfoResponse) {
 /** S6-VV-115 — one export per day: a new EXPORT within 24h of the last finished one is refused. */
 const EXPORT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-function toDataRequest(row: {
+export function toDataRequest(row: {
   id: string;
   type: 'CORRECTION' | 'DELETION' | 'EXPORT';
   status: 'OPEN' | 'IN_REVIEW' | 'COMPLETED' | 'REJECTED';
   details: string;
   createdAt: Date;
   resolvedAt: Date | null;
+  resolution?: string | null;
 }): DataRequestResponse {
   const until = exportAvailableUntil(row);
   return {
@@ -63,6 +64,7 @@ function toDataRequest(row: {
     createdAt: row.createdAt.toISOString(),
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     exportAvailableUntil: until && until.getTime() > Date.now() ? until.toISOString() : null,
+    resolution: row.resolution ?? null,
   };
 }
 

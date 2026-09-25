@@ -101,6 +101,8 @@ export const DataRequestResponseSchema = z.object({
   resolvedAt: IsoDateTimeSchema.nullable(),
   /** S6-VV-115 — set on a finished EXPORT while its bundle can still be downloaded. */
   exportAvailableUntil: IsoDateTimeSchema.nullable(),
+  /** S6-VV-116 — the admin's note when the request was completed or rejected. */
+  resolution: z.string().nullable(),
 });
 export type DataRequestResponse = z.infer<typeof DataRequestResponseSchema>;
 
@@ -116,3 +118,38 @@ export const DataExportDownloadSchema = z.object({
   linksExpireInSeconds: z.number().int().positive(),
 });
 export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;
+
+/* ---------------------- S6-VV-116 admin data-request queue ---------------------- */
+
+/** Internal DPDP targets (decided 2026-09-25): first response within 7 days, closed within 30. */
+export const DSR_SLA_FIRST_RESPONSE_DAYS = 7;
+export const DSR_SLA_CLOSE_DAYS = 30;
+
+export const ListAdminDataRequestsQuerySchema = z.object({
+  type: DataRequestTypeSchema.optional(),
+  status: DataRequestStatusSchema.optional(),
+  /** Only requests still inside the queue (OPEN / IN_REVIEW). Default true. */
+  openOnly: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+});
+export type ListAdminDataRequestsQuery = z.infer<typeof ListAdminDataRequestsQuerySchema>;
+
+export const AdminDataRequestDtoSchema = DataRequestResponseSchema.extend({
+  userId: UuidSchema,
+  userEmail: z.string(),
+  userFullName: z.string(),
+  firstRespondedAt: IsoDateTimeSchema.nullable(),
+  respondBy: IsoDateTimeSchema,
+  closeBy: IsoDateTimeSchema,
+  /** `response_overdue` / `close_overdue` once a target has passed without the step done. */
+  slaState: z.enum(['on_track', 'response_overdue', 'close_overdue']),
+});
+export type AdminDataRequestDto = z.infer<typeof AdminDataRequestDtoSchema>;
+
+/** Completing or rejecting needs a note; the student sees it. */
+export const ResolveDataRequestSchema = z.object({
+  note: z.string().trim().min(8, 'Write a note of at least 8 characters.').max(2000),
+});
+export type ResolveDataRequest = z.infer<typeof ResolveDataRequestSchema>;
