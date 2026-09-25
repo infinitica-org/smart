@@ -9,7 +9,6 @@ const _CLAIM_ID_1 = '11111111-1111-4111-8111-111111111111';
 const _EVIDENCE_ID_1 = '22222222-2222-4222-8222-222222222222';
 const _EVIDENCE_ID_2 = '33333333-3333-4333-8333-333333333333';
 const _STUDENT_ID = '44444444-4444-4444-8444-444444444444';
-
 function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const evidenceRecordCreate = vi.fn().mockResolvedValue({
     id: 'evidence-1',
@@ -60,6 +59,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     getJob: vi.fn().mockResolvedValue(null),
   };
   const dedup = new CredentialDedupService(prisma as never);
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
   };
@@ -94,7 +94,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     evidenceSync as any,
     skillInference as any,
     evidenceVersions as any,
-    _auditPublisher as any,
+    auditPublisher as any,
   );
   return {
     service,
@@ -108,7 +108,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     evidenceSync,
     skillInference,
     evidenceVersions,
-    auditPublisher: _auditPublisher,
+    auditPublisher,
   };
 }
 

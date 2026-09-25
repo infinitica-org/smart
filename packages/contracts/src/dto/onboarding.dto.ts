@@ -142,6 +142,13 @@ export const TenantActionReasonSchema = z.object({
 });
 export type TenantActionReason = z.infer<typeof TenantActionReasonSchema>;
 
+/** Persistable roles only — PUBLIC is traffic-only and never stored on a User row. */
+export const ASSIGNABLE_USER_ROLES = [
+  'SUPER_ADMIN',
+  'INSTITUTION_ADMIN',
+  'PLACEMENT_STAFF',
+] as const;
+
 export const ListInstitutionsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   planCode: PlanCodeSchema.optional(),

@@ -49,6 +49,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'admin.item.updated': 'Updated assessment item',
   'admin.cut_score.upserted': 'Upserted cut score',
   'admin.response.graded': 'Manually graded response',
+
+  // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
+  'score.recalculated': 'Recalculated attempt score',
+  'score.recalibration_run': 'Ran scoring recalibration',
   'admin.skill_retake_policy.updated': 'Updated skill retake policy',
 
   // candidate-certificates.service.ts
@@ -143,6 +147,21 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   'sourceId',
   'externalAccountId',
   'message',
+
+  // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
+  'trigger',
+  'levelId',
+  'previousScorePercent',
+  'nextScorePercent',
+  'previousTier',
+  'nextTier',
+  'predictor',
+  'sampleSize',
+  'correlation',
+  'auc',
+  'previousWeight',
+  'nextWeight',
+  'published',
 
   // work-experience.service.ts
   'attemptId',

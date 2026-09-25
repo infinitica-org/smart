@@ -1,6 +1,7 @@
 import { GoneException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { env } from '../../platform/config/env.js';
 import { EMAIL_QUEUE, type EmailJobPayload } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -18,6 +19,7 @@ export class PasswordResetService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailJobPayload>,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   /**
@@ -45,6 +47,16 @@ export class PasswordResetService {
         resetUrl: buildPasswordResetUrl(raw),
         expiresAtFormatted: `${env.PASSWORD_RESET_TTL_HOURS} hours`,
       },
+    });
+
+    // S6-VV-143 — unauthenticated request against a real account (unknown emails
+    // stay silent here, as in the response, to avoid an enumeration trail).
+    await this.auditPublisher.record({
+      actorId: null,
+      action: 'auth.password_reset_requested',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
     });
   }
 
@@ -83,5 +95,13 @@ export class PasswordResetService {
     ]);
 
     await this.auth.revokeAllForUser(token.userId);
+    await this.auditPublisher.record({
+      actorId: token.userId,
+      action: 'auth.password_reset_completed',
+      resourceType: 'user',
+      resourceId: token.userId,
+      reasonCode: null,
+      metadata: { sessionsRevoked: true },
+    });
   }
 }
