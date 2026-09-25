@@ -71,7 +71,7 @@ describe('S6-VV-115 data export', () => {
     expect(storage.putObjectBuffer).toHaveBeenCalledWith(
       expect.objectContaining({ objectKey: `dsr-exports/${userId}/${requestId}.json` }),
     );
-    const bundle = JSON.parse(stored!.toString());
+    const bundle = JSON.parse(String(stored));
     expect(bundle.data.id).toBe(userId);
     expect(JSON.stringify(bundle)).not.toContain(otherUserId);
   });
@@ -79,7 +79,7 @@ describe('S6-VV-115 data export', () => {
   it('lists uploaded files by storage key, skipping external URLs', async () => {
     await service.build(requestId);
 
-    const bundle = JSON.parse(stored!.toString());
+    const bundle = JSON.parse(String(stored));
     expect(bundle.files.sort()).toEqual(
       ['evidence/ada/cv.pdf', 'photos/ada.png', 'we/ada/offer.pdf', 'we/ada/relieving.pdf'].sort(),
     );
