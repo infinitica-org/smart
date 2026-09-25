@@ -89,6 +89,17 @@ export default function VerificationPage() {
   }
 
   async function resolveTenant(item: VerificationQueueItemDto, decision: 'APPROVED' | 'REJECTED') {
+    // A company rejection is emailed to the applicant, so it needs a note they can act on.
+    if (
+      decision === 'REJECTED' &&
+      item.tenantType === 'company' &&
+      tenantReason.trim().length < 8
+    ) {
+      setError(
+        'Tell the company what to change (at least 8 characters). This note is emailed to them.',
+      );
+      return;
+    }
     setError(null);
     try {
       await api.onboarding.resolveVerification(item.tenantId, {
@@ -389,7 +400,7 @@ export default function VerificationPage() {
               <AdminInput
                 value={tenantReason}
                 onChange={(e) => setTenantReason(e.target.value)}
-                placeholder="e.g. Verified official registrar domain and accreditation."
+                placeholder="e.g. Verified official registrar domain. For a company rejection, this note is emailed to the applicant."
               />
             </Field>
 
@@ -485,7 +496,7 @@ export default function VerificationPage() {
                           onClick={() => void resolveTenant(item, 'REJECTED')}
                         >
                           <X className="h-3.5 w-3.5" />
-                          Reject
+                          {item.tenantType === 'company' ? 'Request changes' : 'Reject'}
                         </Button>
                         <Button
                           type="button"
@@ -618,7 +629,7 @@ export default function VerificationPage() {
                 onClick={() => void resolveTenant(selectedCompany, 'REJECTED')}
               >
                 <X className="h-3.5 w-3.5" />
-                Reject Company
+                Reject / request changes
               </Button>
               <Button
                 size="sm"

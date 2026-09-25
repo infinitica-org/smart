@@ -85,6 +85,36 @@ describe('CompanyRegisterWizard details step', () => {
   });
 });
 
+describe('CompanyRegisterWizard after changes were requested', () => {
+  it('opens the application from the emailed link and shows what to fix', async () => {
+    window.history.replaceState(null, '', '/company/register?session=emailed-token');
+    getSession.mockResolvedValue({
+      onboardingStatus: 'RESUBMISSION_ALLOWED',
+      verificationReason: 'The GST certificate is unreadable.',
+      representative: { fullName: 'Ada', workEmail: 'ada@acme.example' },
+      profile: {},
+      documents: [
+        {
+          documentId: 'd1',
+          fileName: 'gst.pdf',
+          reviewStatus: 'REJECTED',
+          reviewReason: 'Blurry.',
+        },
+        { documentId: 'd2', fileName: 'coi.pdf', reviewStatus: 'ACCEPTED', reviewReason: null },
+      ],
+    });
+
+    render(<CompanyRegisterWizard />);
+
+    expect(await screen.findByText('The GST certificate is unreadable.')).toBeTruthy();
+    expect(screen.getByText('gst.pdf: Blurry.')).toBeTruthy();
+    expect(screen.queryByText(/coi\.pdf/)).toBeNull();
+    expect(getSession).toHaveBeenCalledWith('emailed-token');
+    // The token doesn't linger in the address bar.
+    expect(window.location.search).toBe('');
+  });
+});
+
 describe('CompanyRegisterWizard start step', () => {
   it('rejects a personal email address before calling the API', async () => {
     render(<CompanyRegisterWizard />);

@@ -22,11 +22,22 @@ export type EmailTemplateName =
   /** CO self-onboarding: corporate email OTP (session holder, not JWT). */
   | 'company-onboarding-email-verify'
   /** Phase 6: company representative password setup after SA approval. */
-  | 'company-portal-invite';
+  | 'company-portal-invite'
+  /** EMP-01 #348: reviewer rejected / requested changes; link back into the application. */
+  | 'company-verification-resubmit';
 
 export interface CompanyOnboardingEmailVerifyData {
   readonly fullName: string;
   readonly verificationCode: string;
+  readonly expiresAtFormatted: string;
+}
+
+export interface CompanyVerificationResubmitEmailData {
+  readonly fullName: string;
+  readonly companyName: string;
+  readonly reason: string;
+  readonly rejectedDocuments: readonly { readonly label: string; readonly reason: string | null }[];
+  readonly resumeUrl: string;
   readonly expiresAtFormatted: string;
 }
 
@@ -113,7 +124,8 @@ export type EmailTemplateData =
   | WorkExperienceVerifierReminderEmailData
   | CertificateEndorsementRequestEmailData
   | WorkExperienceManagerEndorsementEmailData
-  | CompanyOnboardingEmailVerifyData;
+  | CompanyOnboardingEmailVerifyData
+  | CompanyVerificationResubmitEmailData;
 
 export interface EmailJobPayload {
   readonly to: string;

@@ -59,6 +59,10 @@ export function CompanyRegisterWizard() {
   const [businessRegistrationNumber, setBusinessRegistrationNumber] = useState('');
 
   const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [reviewFeedback, setReviewFeedback] = useState<{
+    reason: string | null;
+    rejectedDocuments: { documentId: string; fileName: string; reviewReason: string | null }[];
+  } | null>(null);
 
   const resumeSession = useCallback(async (token: string) => {
     const session = await api.public.getCompanyOnboardingSession(token);
@@ -69,6 +73,14 @@ export function CompanyRegisterWizard() {
     if (session.profile.displayName) setDisplayName(session.profile.displayName);
     if (session.profile.legalName) setLegalName(session.profile.legalName);
     if (session.profile.website) setWebsite(session.profile.website);
+    setReviewFeedback(
+      session.onboardingStatus === 'RESUBMISSION_ALLOWED'
+        ? {
+            reason: session.verificationReason ?? null,
+            rejectedDocuments: session.documents.filter((doc) => doc.reviewStatus === 'REJECTED'),
+          }
+        : null,
+    );
     if (session.onboardingStatus === 'PENDING_REVIEW' || session.onboardingStatus === 'SUBMITTED') {
       setStep('done');
       return;
@@ -88,10 +100,20 @@ export function CompanyRegisterWizard() {
   }, []);
 
   useEffect(() => {
-    const existing = readCompanyOnboardingSessionToken();
+    // The "changes needed" email links here with ?session=<token>; it wins over a stored token.
+    const url = new URL(window.location.href);
+    const fromLink = url.searchParams.get('session');
+    if (fromLink) {
+      url.searchParams.delete('session');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+    const existing = fromLink ?? readCompanyOnboardingSessionToken();
     if (!existing) return;
-    resumeSession(existing).catch(() => {
+    resumeSession(existing).catch((err: unknown) => {
       clearCompanyOnboardingSessionToken();
+      if (fromLink) {
+        setError(errorMessage(err, 'This link has expired. Start a new registration below.'));
+      }
     });
   }, [resumeSession]);
 
@@ -475,6 +497,26 @@ export function CompanyRegisterWizard() {
             Resend code
           </button>
         </form>
+      ) : null}
+
+      {step === 'documents' && reviewFeedback ? (
+        <div className="mt-8 space-y-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e]">
+          <p className="font-semibold">Changes requested by the SMART review team</p>
+          {reviewFeedback.reason ? <p>{reviewFeedback.reason}</p> : null}
+          {reviewFeedback.rejectedDocuments.length > 0 ? (
+            <>
+              <p>Please upload these documents again:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {reviewFeedback.rejectedDocuments.map((doc) => (
+                  <li key={doc.documentId}>
+                    {doc.fileName}
+                    {doc.reviewReason ? `: ${doc.reviewReason}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </div>
       ) : null}
 
       {step === 'documents' ? (

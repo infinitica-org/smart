@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ConflictException,
@@ -8,8 +9,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import { AddBatchMemberRequestSchema } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
@@ -71,6 +74,12 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import {
+  EMAIL_QUEUE,
+  type CompanyVerificationResubmitEmailData,
+  type EmailJobPayload,
+} from '../../platform/mailer/mailer.types.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { resolveRecordActors } from './record-actors.js';
 import { buildAuditLogWhere } from './audit-log-query.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
@@ -81,9 +90,16 @@ import {
   getCompanyVerificationReviewDetail,
   mapCompanyVerificationQueueItems,
   resolveCompanyVerification,
+  type CompanyResubmissionEmailPayload,
 } from './company-verification-review.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
+
+/** `BUSINESS_REGISTRATION` → "Business registration". */
+function humanizeEnum(value: string): string {
+  const words = value.toLowerCase().split('_').join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
   `entitlements:institution:${institutionId}`;
 
@@ -103,6 +119,9 @@ export class InstitutionsService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Optional()
+    @InjectQueue(EMAIL_QUEUE)
+    private readonly emailQueue?: Queue<EmailJobPayload>,
   ) {}
 
   /* -------------------------- partnership requests -------------------------- */
@@ -1366,8 +1385,36 @@ export class InstitutionsService {
       if (resolved.activationEmail) {
         await this.invitations.enqueueCompanyActivationEmail(resolved.activationEmail);
       }
+    } else if (resolved.resubmissionEmail) {
+      await this.enqueueCompanyResubmissionEmail(resolved.resubmissionEmail);
     }
     return resolved.queueItem;
+  }
+
+  /** Tells the applicant why the company was sent back and how to reopen the application. */
+  private async enqueueCompanyResubmissionEmail(
+    payload: CompanyResubmissionEmailPayload,
+  ): Promise<void> {
+    if (!this.emailQueue) {
+      this.logger.warn('Email queue unavailable; company resubmission email not sent.');
+      return;
+    }
+    const data: CompanyVerificationResubmitEmailData = {
+      fullName: payload.fullName,
+      companyName: payload.companyName,
+      reason: payload.reason,
+      rejectedDocuments: payload.rejectedDocuments.map((doc) => ({
+        label: `${humanizeEnum(doc.documentType)} (${doc.fileName})`,
+        reason: doc.reason,
+      })),
+      resumeUrl: payload.resumeUrl,
+      expiresAtFormatted: payload.expiresAt.toUTCString(),
+    };
+    await this.emailQueue.add('send', {
+      to: payload.to,
+      template: 'company-verification-resubmit',
+      data,
+    });
   }
 
   private toAuditDto(row: {
