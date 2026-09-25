@@ -93,7 +93,6 @@ Alert (S6-VV-125): `time() - smart_backup_last_success_timestamp_seconds > 26h`,
 
 ## Restoring
 
-<<<<<<< HEAD
 A backup is only as good as its last restore. `infra/backup/restore.sh` (in the same
 image) does both the routine drill and a real disaster recovery. It always:
 
