@@ -52,6 +52,7 @@ export class AuditAccessInterceptor implements NestInterceptor {
   ): Promise<void> {
     const params = request.params as Record<string, string> | undefined;
     const resourceId = params?.[options.idParam];
+    const actor = request.user;
     const subjectId = options.subjectParam ? params?.[options.subjectParam] : resourceId;
     if (!actor?.sub || !resourceId || actor.sub === subjectId) return;
     const action = options.action ?? 'admin.data_accessed';
