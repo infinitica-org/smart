@@ -6,16 +6,34 @@ import type {
 } from '@smart/contracts';
 import { CompanyAddressSchema, CompanyVerificationReviewDetailDtoSchema } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { env } from '../../platform/config/env.js';
 import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 import type { StorageService } from '../../platform/storage/storage.service.js';
 import {
   provisionCompanyRepresentative,
   type CompanyActivationEmailPayload,
 } from './company-account-provision.js';
+import {
+  generateOnboardingSessionToken,
+  onboardingSessionExpiresAt,
+} from './company-onboarding.util.js';
+
+/** What the applicant is told when a reviewer rejects / requests changes. */
+export type CompanyResubmissionEmailPayload = {
+  to: string;
+  fullName: string;
+  companyName: string;
+  reason: string;
+  rejectedDocuments: { fileName: string; documentType: string; reason: string | null }[];
+  /** Carries a freshly rotated session token: the only way back into the application. */
+  resumeUrl: string;
+  expiresAt: Date;
+};
 
 export type ResolveCompanyVerificationResult = {
   queueItem: VerificationQueueItemDto;
   activationEmail: CompanyActivationEmailPayload | null;
+  resubmissionEmail: CompanyResubmissionEmailPayload | null;
 };
 
 type CompanyRow = {
@@ -204,6 +222,7 @@ export async function resolveCompanyVerification(
 
     const now = new Date();
     const reviewedDocumentIds: string[] = [];
+    const rejectedDocuments: CompanyResubmissionEmailPayload['rejectedDocuments'] = [];
     if (body.documentReviews?.length) {
       for (const review of body.documentReviews) {
         const document = await tx.companyVerificationDocument.findFirst({
@@ -230,6 +249,13 @@ export async function resolveCompanyVerification(
           },
         });
         reviewedDocumentIds.push(document.id);
+        if (review.reviewStatus === 'REJECTED') {
+          rejectedDocuments.push({
+            fileName: document.fileName,
+            documentType: document.documentType,
+            reason: review.reviewReason ?? null,
+          });
+        }
       }
     }
 
@@ -251,21 +277,48 @@ export async function resolveCompanyVerification(
       },
     });
 
-    const sessionUpdate =
-      body.decision === 'APPROVED'
-        ? { onboardingStatus: 'ACCOUNT_ACTIVE' as const }
-        : { onboardingStatus: 'RESUBMISSION_ALLOWED' as const };
-
-    if (verification.onboardingSessionId) {
-      await tx.companyOnboardingSession.updateMany({
-        where: { id: verification.onboardingSessionId, companyId },
-        data: sessionUpdate,
-      });
+    let resubmissionEmail: CompanyResubmissionEmailPayload | null = null;
+    if (body.decision === 'APPROVED') {
+      const sessionUpdate = { onboardingStatus: 'ACCOUNT_ACTIVE' as const };
+      if (verification.onboardingSessionId) {
+        await tx.companyOnboardingSession.updateMany({
+          where: { id: verification.onboardingSessionId, companyId },
+          data: sessionUpdate,
+        });
+      } else {
+        await tx.companyOnboardingSession.updateMany({
+          where: { companyId, onboardingStatus: 'PENDING_REVIEW' },
+          data: sessionUpdate,
+        });
+      }
     } else {
-      await tx.companyOnboardingSession.updateMany({
-        where: { companyId, onboardingStatus: 'PENDING_REVIEW' },
-        data: sessionUpdate,
-      });
+      const session = verification.onboardingSessionId
+        ? await tx.companyOnboardingSession.findFirst({
+            where: { id: verification.onboardingSessionId, companyId },
+          })
+        : await tx.companyOnboardingSession.findFirst({
+            where: { companyId, onboardingStatus: 'PENDING_REVIEW' },
+          });
+      if (session) {
+        // Only the hash of the applicant's original token is stored, so rotate it: the emailed
+        // link becomes the way back in, and it gets a fresh expiry to resubmit within.
+        const { raw, hash } = generateOnboardingSessionToken();
+        const expiresAt = onboardingSessionExpiresAt();
+        await tx.companyOnboardingSession.update({
+          where: { id: session.id },
+          data: { onboardingStatus: 'RESUBMISSION_ALLOWED', sessionTokenHash: hash, expiresAt },
+        });
+        const rep = session.representativeSnapshot as { fullName?: string } | null;
+        resubmissionEmail = {
+          to: session.representativeEmail,
+          fullName: rep?.fullName ?? 'there',
+          companyName: updatedCompany.name,
+          reason: body.reason,
+          rejectedDocuments,
+          resumeUrl: `${env.AUTH_APP_URL}/company/register?session=${encodeURIComponent(raw)}`,
+          expiresAt,
+        };
+      }
     }
 
     let provisioning: Awaited<ReturnType<typeof provisionCompanyRepresentative>> | null = null;
@@ -283,6 +336,7 @@ export async function resolveCompanyVerification(
       verificationId: verification.id,
       reviewedDocumentIds,
       provisioning,
+      resubmissionEmail,
     };
   });
 
@@ -349,6 +403,7 @@ export async function resolveCompanyVerification(
   return {
     queueItem,
     activationEmail: result.provisioning?.activationEmail ?? null,
+    resubmissionEmail: result.resubmissionEmail,
   };
 }
 

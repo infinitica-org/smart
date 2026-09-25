@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { hashOnboardingSecret } from './company-onboarding.util.js';
 import {
   mapCompanyVerificationQueueItems,
   resolveCompanyVerification,
@@ -38,6 +39,7 @@ describe('company verification review', () => {
           representativeSnapshot: { fullName: 'Jane Rep' },
         }),
         updateMany: vi.fn(),
+        update: vi.fn(),
       },
       user: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -201,7 +203,7 @@ describe('company verification review', () => {
         createdAt: new Date('2026-09-21T10:00:00.000Z'),
       });
 
-      await resolveCompanyVerification(
+      const result = await resolveCompanyVerification(
         prisma,
         COMPANY_ID,
         {
@@ -213,14 +215,74 @@ describe('company verification review', () => {
         audit,
       );
 
-      expect(prisma.companyOnboardingSession.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { onboardingStatus: 'RESUBMISSION_ALLOWED' },
-        }),
-      );
+      const update = prisma.companyOnboardingSession.update.mock.calls[0]?.[0];
+      expect(update.where).toEqual({ id: '22222222-2222-4222-8222-222222222222' });
+      expect(update.data.onboardingStatus).toBe('RESUBMISSION_ALLOWED');
+      expect(update.data.expiresAt.getTime()).toBeGreaterThan(Date.now());
       expect(audit).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'company.verification.rejected' }),
       );
+
+      // The emailed link carries the new token; only its hash is stored on the session.
+      const email = result.resubmissionEmail;
+      expect(email).toMatchObject({
+        to: 'hr@acme.example',
+        fullName: 'Jane Rep',
+        companyName: 'Acme',
+        reason: 'Need clearer tax doc.',
+        rejectedDocuments: [],
+      });
+      const resumeUrl = new URL(email?.resumeUrl ?? '');
+      expect(resumeUrl.pathname).toBe('/company/register');
+      const token = resumeUrl.searchParams.get('session') ?? '';
+      expect(hashOnboardingSecret(token)).toBe(update.data.sessionTokenHash);
+    });
+
+    it('lists the rejected documents and their notes in the resubmission email', async () => {
+      prisma.company.update.mockResolvedValue({
+        id: COMPANY_ID,
+        name: 'Acme',
+        taxonomyDomain: 'Software',
+        verificationStatus: 'REJECTED',
+        verificationReason: 'Documents unreadable.',
+        createdAt: new Date('2026-09-21T10:00:00.000Z'),
+      });
+      prisma.companyVerificationDocument.findFirst.mockResolvedValue({
+        id: DOCUMENT_ID,
+        fileName: 'gst.pdf',
+        documentType: 'TAX_DOCUMENT',
+      });
+
+      const result = await resolveCompanyVerification(
+        prisma,
+        COMPANY_ID,
+        {
+          tenantType: 'company',
+          decision: 'REJECTED',
+          reason: 'Documents unreadable.',
+          documentReviews: [
+            { documentId: DOCUMENT_ID, reviewStatus: 'REJECTED', reviewReason: 'Blurry scan.' },
+          ],
+        },
+        ACTOR_ID,
+        audit,
+      );
+
+      expect(result.resubmissionEmail?.rejectedDocuments).toEqual([
+        { fileName: 'gst.pdf', documentType: 'TAX_DOCUMENT', reason: 'Blurry scan.' },
+      ]);
+    });
+
+    it('sends no resubmission email on approval', async () => {
+      const result = await resolveCompanyVerification(
+        prisma,
+        COMPANY_ID,
+        { tenantType: 'company', decision: 'APPROVED', reason: 'Verified manually.' },
+        ACTOR_ID,
+        audit,
+      );
+      expect(result.resubmissionEmail).toBeNull();
+      expect(prisma.companyOnboardingSession.update).not.toHaveBeenCalled();
     });
   });
 });

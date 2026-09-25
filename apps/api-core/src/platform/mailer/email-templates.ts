@@ -2,6 +2,7 @@ import {
   renderEmailLayout,
   paragraph,
   strong,
+  bulletList,
   detailRows,
   WELCOME_ILLUSTRATION,
   REMINDER_ILLUSTRATION,
@@ -17,6 +18,7 @@ import { env } from '../config/env.js';
 import type {
   CertificateEndorsementRequestEmailData,
   CompanyOnboardingEmailVerifyData,
+  CompanyVerificationResubmitEmailData,
   EmailTemplateData,
   EmailTemplateName,
   EmailVerificationEmailData,
@@ -108,7 +110,69 @@ export function renderEmailTemplate(
       return buildCompanyPortalInvite(data as InviteEmailData);
     case 'company-onboarding-email-verify':
       return buildCompanyOnboardingEmailVerify(data as CompanyOnboardingEmailVerifyData);
+    case 'company-verification-resubmit':
+      return buildCompanyVerificationResubmit(data as CompanyVerificationResubmitEmailData);
   }
+}
+
+/** Reviewer notes and file names are free text, so escape them before they go into HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildCompanyVerificationResubmit(
+  payload: CompanyVerificationResubmitEmailData,
+): RenderedEmail {
+  const subject = `Changes needed for ${payload.companyName} on SMART`;
+  const documentLine = (doc: { label: string; reason: string | null }) =>
+    doc.reason ? `${doc.label}: ${doc.reason}` : doc.label;
+  const bodyHtml = [
+    paragraph(
+      `Hello ${strong(escapeHtml(payload.fullName))}, we reviewed the registration for ${strong(escapeHtml(payload.companyName))} and need a few changes before we can approve it.`,
+    ),
+    paragraph(`${strong("Reviewer's note:")} ${escapeHtml(payload.reason)}`),
+    ...(payload.rejectedDocuments.length > 0
+      ? [
+          paragraph('These documents need to be uploaded again:'),
+          bulletList(payload.rejectedDocuments.map((doc) => escapeHtml(documentLine(doc)))),
+        ]
+      : []),
+    paragraph(
+      'Use the button below to reopen your application, make the changes, and submit it again. Nothing you already entered is lost.',
+    ),
+  ].join('');
+  const text = [
+    `Hello ${payload.fullName}, we reviewed the registration for ${payload.companyName} and need a few changes before we can approve it.`,
+    `Reviewer's note: ${payload.reason}`,
+    ...(payload.rejectedDocuments.length > 0
+      ? [
+          [
+            'These documents need to be uploaded again:',
+            ...payload.rejectedDocuments.map((doc) => `- ${documentLine(doc)}`),
+          ].join('\n'),
+        ]
+      : []),
+    `Reopen your application: ${payload.resumeUrl}`,
+    `This link works until ${payload.expiresAtFormatted} (UTC).`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Your company registration needs changes',
+      illustration: VERIFICATION_FAILED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Reopen my application', url: payload.resumeUrl },
+      footerNote: `This link works until ${payload.expiresAtFormatted} (UTC).`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
 }
 
 function buildCompanyOnboardingEmailVerify(

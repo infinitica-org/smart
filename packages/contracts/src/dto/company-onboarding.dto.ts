@@ -168,6 +168,8 @@ export const CompanyOnboardingSessionDtoSchema = z.object({
   companyId: UuidSchema.nullable(),
   onboardingStatus: CompanyOnboardingStatusSchema,
   verificationStatus: TenantVerificationStatusSchema.nullable(),
+  /** The reviewer's note when changes were requested (`RESUBMISSION_ALLOWED`); otherwise null. */
+  verificationReason: z.string().nullable().optional(),
   profile: CompanySignupProfileSchema.partial(),
   representative: CompanyRepresentativeSchema.partial(),
   verification: CompanyVerificationSchema.partial(),
