@@ -5,6 +5,7 @@ import { hashPasswordResetToken } from './password-reset-token.util.js';
 
 describe('PasswordResetService.request', () => {
   it('enqueues a reset email for a known password account', async () => {
+    const audit = { record: vi.fn() };
     const userId = randomUUID();
     const created: unknown[] = [];
     const prisma = {
@@ -24,7 +25,12 @@ describe('PasswordResetService.request', () => {
       },
     };
     const emailQueue = { add: vi.fn() };
-    const service = new PasswordResetService(prisma as never, {} as never, emailQueue as never);
+    const service = new PasswordResetService(
+      prisma as never,
+      {} as never,
+      emailQueue as never,
+      audit as never,
+    );
 
     await service.request('Student@Example.com');
 
@@ -33,23 +39,42 @@ describe('PasswordResetService.request', () => {
       'send',
       expect.objectContaining({ to: 'student@example.com', template: 'password-reset' }),
     );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: null,
+        action: 'auth.password_reset_requested',
+        resourceId: userId,
+      }),
+    );
   });
 
   it('does not reveal whether the email exists (no user)', async () => {
+    const audit = { record: vi.fn() };
     const prisma = { user: { findUnique: vi.fn(async () => null) } };
     const emailQueue = { add: vi.fn() };
-    const service = new PasswordResetService(prisma as never, {} as never, emailQueue as never);
+    const service = new PasswordResetService(
+      prisma as never,
+      {} as never,
+      emailQueue as never,
+      audit as never,
+    );
 
     await expect(service.request('nobody@example.com')).resolves.toBeUndefined();
     expect(emailQueue.add).not.toHaveBeenCalled();
   });
 
   it('does not reveal whether the email exists (no password set, e.g. invite-only account)', async () => {
+    const audit = { record: vi.fn() };
     const prisma = {
       user: { findUnique: vi.fn(async () => ({ id: randomUUID(), passwordHash: null })) },
     };
     const emailQueue = { add: vi.fn() };
-    const service = new PasswordResetService(prisma as never, {} as never, emailQueue as never);
+    const service = new PasswordResetService(
+      prisma as never,
+      {} as never,
+      emailQueue as never,
+      audit as never,
+    );
 
     await expect(service.request('nopassword@example.com')).resolves.toBeUndefined();
     expect(emailQueue.add).not.toHaveBeenCalled();
@@ -58,6 +83,7 @@ describe('PasswordResetService.request', () => {
 
 describe('PasswordResetService.confirm', () => {
   it('sets the new password, consumes the token, and revokes all sessions', async () => {
+    const audit = { record: vi.fn() };
     const raw = 'raw-reset-token';
     const tokenId = randomUUID();
     const userId = randomUUID();
@@ -82,20 +108,30 @@ describe('PasswordResetService.confirm', () => {
       {
         add: vi.fn(),
       } as never,
+      audit as never,
     );
 
     await service.confirm(raw, 'new-password-1');
 
     expect(prisma.$transaction).toHaveBeenCalled();
     expect(auth.revokeAllForUser).toHaveBeenCalledWith(userId);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: userId,
+        action: 'auth.password_reset_completed',
+        resourceId: userId,
+      }),
+    );
   });
 
   it('rejects an unknown token with 404', async () => {
+    const audit = { record: vi.fn() };
     const prisma = { passwordResetToken: { findUnique: vi.fn(async () => null) } };
     const service = new PasswordResetService(
       prisma as never,
       { revokeAllForUser: vi.fn() } as never,
       { add: vi.fn() } as never,
+      audit as never,
     );
 
     await expect(service.confirm('bogus', 'new-password-1')).rejects.toMatchObject({
@@ -104,6 +140,7 @@ describe('PasswordResetService.confirm', () => {
   });
 
   it('rejects an already-consumed token with 410', async () => {
+    const audit = { record: vi.fn() };
     const prisma = {
       passwordResetToken: {
         findUnique: vi.fn(async () => ({
@@ -119,6 +156,7 @@ describe('PasswordResetService.confirm', () => {
       prisma as never,
       { revokeAllForUser: vi.fn() } as never,
       { add: vi.fn() } as never,
+      audit as never,
     );
 
     await expect(service.confirm('used', 'new-password-1')).rejects.toMatchObject({
@@ -127,6 +165,7 @@ describe('PasswordResetService.confirm', () => {
   });
 
   it('rejects an expired token with 410', async () => {
+    const audit = { record: vi.fn() };
     const prisma = {
       passwordResetToken: {
         findUnique: vi.fn(async () => ({
@@ -142,6 +181,7 @@ describe('PasswordResetService.confirm', () => {
       prisma as never,
       { revokeAllForUser: vi.fn() } as never,
       { add: vi.fn() } as never,
+      audit as never,
     );
 
     await expect(service.confirm('expired', 'new-password-1')).rejects.toMatchObject({

@@ -152,7 +152,11 @@ export class GradingAdminService {
       previousScore !== null &&
       previousScore === request.score
     ) {
-      const recalculated = await this.recalculation.recalculateForAttempt(response.attemptId);
+      const recalculated = await this.recalculation.recalculateForAttempt(response.attemptId, {
+        actorId,
+        trigger: 'manual_grade',
+        reasonCode: request.reason ?? null,
+      });
       return {
         responseId: id,
         attemptId: response.attemptId,
@@ -177,7 +181,11 @@ export class GradingAdminService {
       });
     });
 
-    const recalculated = await this.recalculation.recalculateForAttempt(response.attemptId);
+    const recalculated = await this.recalculation.recalculateForAttempt(response.attemptId, {
+      actorId,
+      trigger: 'manual_grade',
+      reasonCode: request.reason ?? null,
+    });
 
     await this.auditPublisher.record({
       actorId,

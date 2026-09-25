@@ -83,6 +83,30 @@ export const CorrelationReportDtoSchema = z.object({
 });
 export type CorrelationReportDto = z.infer<typeof CorrelationReportDtoSchema>;
 
+/**
+ * Adverse impact and disparate impact analysis (I566 - SEC-02).
+ * Verifies that assessment selection/clear rates across groups satisfy the 4/5ths (80%) rule.
+ */
+export const AdverseImpactGroupRateSchema = z.object({
+  group: z.string(),
+  totalAssessed: z.number().int().nonnegative(),
+  clearedCount: z.number().int().nonnegative(),
+  selectionRate: z.number().min(0).max(1),
+  impactRatio: z.number().min(0),
+  adverseImpactDetected: z.boolean(),
+});
+export type AdverseImpactGroupRate = z.infer<typeof AdverseImpactGroupRateSchema>;
+
+export const AdverseImpactReportDtoSchema = z.object({
+  trackCode: TrackCodeSchema,
+  levelNumber: LevelNumberSchema,
+  fourFifthsRuleMet: z.boolean(),
+  favorableGroup: z.string(),
+  groupRates: z.array(AdverseImpactGroupRateSchema),
+  evaluatedAt: IsoDateTimeSchema,
+});
+export type AdverseImpactReportDto = z.infer<typeof AdverseImpactReportDtoSchema>;
+
 /** Super Admin platform health surface. Consumer: `web-admin`. */
 export const PlatformHealthDtoSchema = z.object({
   generatedAt: IsoDateTimeSchema,

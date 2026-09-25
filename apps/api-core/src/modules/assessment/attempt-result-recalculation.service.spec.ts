@@ -35,6 +35,7 @@ describe('AttemptResultRecalculationService', () => {
       },
     });
 
+    const audit = { record: vi.fn() };
     const updateLevelResult = vi.fn().mockResolvedValue({});
     const createLevelResult = vi.fn().mockResolvedValue({});
 
@@ -43,7 +44,7 @@ describe('AttemptResultRecalculationService', () => {
       levelResult: { update: updateLevelResult, create: createLevelResult },
     };
 
-    const service = new AttemptResultRecalculationService(prisma as never);
+    const service = new AttemptResultRecalculationService(prisma as never, audit as never);
     const result = await service.recalculateForAttempt(ATTEMPT_ID);
 
     expect(result.scorePercent).toBe(100);
@@ -58,6 +59,21 @@ describe('AttemptResultRecalculationService', () => {
       },
     });
     expect(createLevelResult).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith({
+      actorId: null,
+      action: 'score.recalculated',
+      resourceType: 'Attempt',
+      resourceId: ATTEMPT_ID,
+      reasonCode: null,
+      metadata: {
+        trigger: 'system',
+        levelId: LEVEL_ID,
+        previousScorePercent: 50,
+        nextScorePercent: 100,
+        previousTier: 'BRONZE',
+        nextTier: null,
+      },
+    });
   });
 
   it('creates LevelResult with rawScore when result record does not exist initially and no cutScores exist', async () => {
@@ -83,6 +99,7 @@ describe('AttemptResultRecalculationService', () => {
       result: null,
     });
 
+    const audit = { record: vi.fn() };
     const updateLevelResult = vi.fn().mockResolvedValue({});
     const createLevelResult = vi.fn().mockResolvedValue({});
 
@@ -91,7 +108,7 @@ describe('AttemptResultRecalculationService', () => {
       levelResult: { update: updateLevelResult, create: createLevelResult },
     };
 
-    const service = new AttemptResultRecalculationService(prisma as never);
+    const service = new AttemptResultRecalculationService(prisma as never, audit as never);
     const result = await service.recalculateForAttempt(ATTEMPT_ID);
 
     expect(result.scorePercent).toBe(100);
@@ -107,5 +124,57 @@ describe('AttemptResultRecalculationService', () => {
       },
     });
     expect(updateLevelResult).not.toHaveBeenCalled();
+  });
+
+  it('records the manual-grade actor and reason, and skips a no-op recalculation (S6-VV-102)', async () => {
+    const attempt = {
+      id: ATTEMPT_ID,
+      levelId: LEVEL_ID,
+      level: { id: LEVEL_ID, cutScores: [] },
+      responses: [
+        {
+          id: 'resp-1',
+          itemId: ITEM_ID,
+          score: 3,
+          maxScore: 3,
+          item: { id: ITEM_ID, itemType: 'SHORT_ANSWER' },
+        },
+      ],
+      result: {
+        attemptId: ATTEMPT_ID,
+        rawScore: 60,
+        tierAwarded: null,
+        confidenceBand: 'x',
+        borderline: false,
+      },
+    };
+    const audit = { record: vi.fn() };
+    const prisma = {
+      attempt: { findUnique: vi.fn().mockResolvedValue(attempt) },
+      levelResult: { update: vi.fn().mockResolvedValue({}), create: vi.fn() },
+    };
+    const service = new AttemptResultRecalculationService(prisma as never, audit as never);
+
+    await service.recalculateForAttempt(ATTEMPT_ID, {
+      actorId: 'admin-1',
+      trigger: 'manual_grade',
+      reasonCode: 'rubric_review',
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'admin-1',
+        reasonCode: 'rubric_review',
+        metadata: expect.objectContaining({
+          trigger: 'manual_grade',
+          previousScorePercent: 60,
+          nextScorePercent: 100,
+        }),
+      }),
+    );
+
+    audit.record.mockClear();
+    attempt.result = { ...attempt.result, rawScore: 100 };
+    await service.recalculateForAttempt(ATTEMPT_ID);
+    expect(audit.record).not.toHaveBeenCalled();
   });
 });
