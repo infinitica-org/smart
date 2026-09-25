@@ -152,6 +152,7 @@ describe('AC-T06 authorization', () => {
     await expect(
       (async () =>
         controller.sendToCompany(
+          tpoAdmin as never,
           applicationId,
           resolveTenantId({ ...tpoAdmin, inst: null } as never),
         ))(),
@@ -246,7 +247,11 @@ describe('AC-T06 send-to-company', () => {
     const { controller, prisma, outbox } = setup({ attempt: null });
 
     await expect(
-      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+      controller.sendToCompany(
+        tpoAdmin as never,
+        applicationId,
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.application.update).not.toHaveBeenCalled();
     expect(prisma.applicationStageEvent.create).not.toHaveBeenCalled();
@@ -257,7 +262,11 @@ describe('AC-T06 send-to-company', () => {
     const { controller, outbox } = setup({ attempt: { passed: null, explanation: null } });
 
     await expect(
-      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+      controller.sendToCompany(
+        tpoAdmin as never,
+        applicationId,
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toMatchObject({
       constructor: UnprocessableEntityException,
     });
@@ -271,7 +280,11 @@ describe('AC-T06 send-to-company', () => {
     const { controller, prisma, outbox } = setup({ student });
 
     await expect(
-      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+      controller.sendToCompany(
+        tpoAdmin as never,
+        applicationId,
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toMatchObject({
       constructor: ConflictException,
     });
@@ -283,6 +296,7 @@ describe('AC-T06 send-to-company', () => {
     const { controller, prisma, outbox } = setup();
 
     const result = await controller.sendToCompany(
+      tpoAdmin as never,
       applicationId,
       resolveTenantId(tpoAdmin as never),
     );
@@ -329,6 +343,7 @@ describe('AC-T06 send-to-company', () => {
     });
 
     const result = await controller.sendToCompany(
+      tpoAdmin as never,
       applicationId,
       resolveTenantId(tpoAdmin as never),
     );
@@ -346,7 +361,11 @@ describe('AC-T06 send-to-company', () => {
     });
 
     await expect(
-      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+      controller.sendToCompany(
+        tpoAdmin as never,
+        applicationId,
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.update).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -369,7 +388,11 @@ describe('AC-T06 send-to-company', () => {
     });
 
     await expect(
-      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+      controller.sendToCompany(
+        tpoAdmin as never,
+        applicationId,
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
