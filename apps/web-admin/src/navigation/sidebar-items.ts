@@ -5,6 +5,7 @@ import {
   Building2,
   CheckCircle2,
   ClipboardList,
+  FileLock,
   GraduationCap,
   HeartPulse,
   HelpCircle,
@@ -73,6 +74,12 @@ export const sidebarItems: NavGroup[] = [
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'sessions', title: 'Active sessions', url: '/admin/sessions', icon: LogOut },
+      {
+        id: 'data-requests',
+        title: 'Data requests',
+        url: '/admin/data-requests',
+        icon: FileLock,
+      },
       {
         id: 'project-review',
         title: 'Project review',

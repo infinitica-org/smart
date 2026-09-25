@@ -121,8 +121,15 @@ export function DataRequestsCard() {
       ) : (
         <ul className="mt-2 divide-y divide-zinc-100 text-xs dark:divide-zinc-800">
           {requests.map((r) => (
-            <li key={r.id} className="flex items-center justify-between py-2">
-              <span className="text-zinc-700 dark:text-zinc-300">{TYPE_LABEL[r.type]}</span>
+            <li key={r.id} className="flex items-center justify-between gap-3 py-2">
+              <span className="text-zinc-700 dark:text-zinc-300">
+                {TYPE_LABEL[r.type]}
+                {r.resolution ? (
+                  <span className="mt-0.5 block text-zinc-500 dark:text-zinc-400">
+                    {r.resolution}
+                  </span>
+                ) : null}
+              </span>
               {r.exportAvailableUntil ? (
                 <button
                   type="button"
