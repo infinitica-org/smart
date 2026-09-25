@@ -7,6 +7,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { MatchingService } from './matching.service.js';
 import { PlacementMatchController } from './placement-match.controller.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -66,9 +67,17 @@ function setup(
     students?: unknown[];
     matchRun?: unknown;
     useRulesRanker?: boolean;
+    /** Students that are now deactivated or held (S6-VV-148). */
+    hiddenStudentIds?: string[];
   } = {},
 ) {
+  const hidden = new Set(options.hiddenStudentIds ?? []);
   const prisma = {
+    user: {
+      findMany: vi.fn(({ where }: { where: { id: { in: string[] } } }) =>
+        Promise.resolve(where.id.in.filter((id) => !hidden.has(id)).map((id) => ({ id }))),
+      ),
+    },
     jobOpening: {
       findFirst: vi
         .fn()
@@ -180,7 +189,11 @@ describe('SE-T05 match authorization', () => {
   it('refuses a TPO token that carries no institution claim', async () => {
     const { controller, prisma } = setup();
     await expect(
-      controller.match({ ...tpoAdmin, inst: null } as never, { jdId: openingId }),
+      (async () =>
+        controller.match(
+          { jdId: openingId },
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
   });
@@ -190,7 +203,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('returns a contract ShortlistDto ranked from verified claims', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(ShortlistDtoSchema.parse(dto).candidates).toHaveLength(1);
     expect(dto.jdId).toBe(openingId);
@@ -225,7 +238,10 @@ describe('SE-T05 POST /placement/match', () => {
     const { controller, prisma } = setup({ opening: null, jd: null });
 
     await expect(
-      controller.match({ ...tpoAdmin, inst: otherInstitutionId } as never, { jdId: openingId }),
+      controller.match(
+        { jdId: openingId },
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where.institutionId).toBe(
       otherInstitutionId,
@@ -235,7 +251,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('does not return declared-only students because the pool requires VERIFIED', async () => {
     const { controller, prisma } = setup({ students: [] });
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.candidates).toEqual([]);
     expect(dto.totalCandidatesConsidered).toBe(0);
@@ -262,10 +278,13 @@ describe('SE-T05 POST /placement/match', () => {
       ],
     });
 
-    const dto = await controller.match(tpoAdmin as never, {
-      jdId: openingId,
-      minSkillCoverage: 0.6,
-    });
+    const dto = await controller.match(
+      {
+        jdId: openingId,
+        minSkillCoverage: 0.6,
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(dto.candidates).toHaveLength(1);
     expect(dto.candidatesScoredCount).toBe(1);
@@ -325,7 +344,7 @@ describe('SE-T05 POST /placement/match', () => {
       },
     ]);
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('Missing Dockerfile');
     expect(dto.candidates[0]?.explanation.strongCompetencies).toContain(
@@ -338,7 +357,7 @@ describe('SE-T05 POST /placement/match', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.match(tpoAdmin as never, { jdId: 'not-a-uuid' }),
+      controller.match({ jdId: 'not-a-uuid' }, resolveTenantId(tpoAdmin as never)),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
   });
@@ -346,7 +365,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('reports the pre-ranking eligible pool size alongside the ranked candidates', async () => {
     const { controller } = setup();
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.eligiblePoolCount).toBe(1);
   });
@@ -487,3 +506,53 @@ function contextWithUser(user: { role: string } | undefined): ExecutionContext {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
   } as ExecutionContext;
 }
+
+describe('S6-VV-148 employer visibility', () => {
+  const hiddenStudentId = randomUUID();
+
+  async function storedShortlist() {
+    const { controller } = setup({
+      students: [verifiedStudent(), verifiedStudent({ id: hiddenStudentId, fullName: 'Gone' })],
+    });
+    return controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
+  }
+
+  it('keeps deactivated and held students out of the eligible pool', async () => {
+    const { controller, prisma } = setup();
+
+    await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
+
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    expect(sqlArg.sql).toContain('u.deactivated_at IS NULL AND u.held_at IS NULL');
+  });
+
+  it('drops a candidate from a stored run once they become hidden', async () => {
+    const shortlist = await storedShortlist();
+    expect(shortlist.candidates.map((row) => row.studentId)).toContain(hiddenStudentId);
+    const { service } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', resultSnapshot: shortlist }),
+      hiddenStudentIds: [hiddenStudentId],
+    });
+
+    const dto = await service.getMatchRun(institutionId, 'run-1');
+
+    expect(dto.shortlist?.candidates.map((row) => row.studentId)).toEqual([studentId]);
+  });
+
+  it('404s the fit view for a hidden candidate still present in a stored run', async () => {
+    const shortlist = await storedShortlist();
+    const { service } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', resultSnapshot: shortlist }),
+      hiddenStudentIds: [hiddenStudentId],
+    });
+
+    const runId = randomUUID();
+
+    await expect(
+      service.getCandidateFit(institutionId, runId, hiddenStudentId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getCandidateFit(institutionId, runId, studentId)).resolves.toMatchObject({
+      studentId,
+    });
+  });
+});

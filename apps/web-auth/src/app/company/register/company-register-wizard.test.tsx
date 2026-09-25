@@ -1,15 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { COMPANY_SIZE_BANDS } from '@smart/contracts';
+import { COMPANY_SIZE_BANDS, COMPANY_WORK_EMAIL_REQUIRED_MESSAGE } from '@smart/contracts';
 import { SmartApiError } from '@smart/api-client';
 
 const getSession = vi.fn();
 const updateDraft = vi.fn();
 const sendVerification = vi.fn();
+const startOnboarding = vi.fn();
 
 vi.mock('../../../lib/api', () => ({
   api: {
     public: {
+      startCompanyOnboarding: (...a: unknown[]) => startOnboarding(...a),
       getCompanyOnboardingSession: (...a: unknown[]) => getSession(...a),
       updateCompanyOnboardingDraft: (...a: unknown[]) => updateDraft(...a),
       sendCompanyOnboardingEmailVerification: (...a: unknown[]) => sendVerification(...a),
@@ -41,6 +43,7 @@ beforeEach(() => {
   getSession.mockReset();
   updateDraft.mockReset();
   sendVerification.mockReset();
+  startOnboarding.mockReset();
 });
 afterEach(() => {
   cleanup();
@@ -79,5 +82,51 @@ describe('CompanyRegisterWizard details step', () => {
     const alert = await screen.findByRole('alert');
     await waitFor(() => expect(alert.textContent).toContain('Phone: Enter a valid phone number.'));
     expect(alert.textContent).not.toBe('Request failed validation.');
+  });
+});
+
+describe('CompanyRegisterWizard after changes were requested', () => {
+  it('opens the application from the emailed link and shows what to fix', async () => {
+    window.history.replaceState(null, '', '/company/register?session=emailed-token');
+    getSession.mockResolvedValue({
+      onboardingStatus: 'RESUBMISSION_ALLOWED',
+      verificationReason: 'The GST certificate is unreadable.',
+      representative: { fullName: 'Ada', workEmail: 'ada@acme.example' },
+      profile: {},
+      documents: [
+        {
+          documentId: 'd1',
+          fileName: 'gst.pdf',
+          reviewStatus: 'REJECTED',
+          reviewReason: 'Blurry.',
+        },
+        { documentId: 'd2', fileName: 'coi.pdf', reviewStatus: 'ACCEPTED', reviewReason: null },
+      ],
+    });
+
+    render(<CompanyRegisterWizard />);
+
+    expect(await screen.findByText('The GST certificate is unreadable.')).toBeTruthy();
+    expect(screen.getByText('gst.pdf: Blurry.')).toBeTruthy();
+    expect(screen.queryByText(/coi\.pdf/)).toBeNull();
+    expect(getSession).toHaveBeenCalledWith('emailed-token');
+    // The token doesn't linger in the address bar.
+    expect(window.location.search).toBe('');
+  });
+});
+
+describe('CompanyRegisterWizard start step', () => {
+  it('rejects a personal email address before calling the API', async () => {
+    render(<CompanyRegisterWizard />);
+    const email = await screen.findByLabelText('Work email');
+    fireEvent.change(email, { target: { value: 'ada@gmail.com' } });
+    expect(screen.getByText(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE)).toBeTruthy();
+
+    const form = email.closest('form');
+    if (!form) throw new Error('form missing');
+    fireEvent.submit(form);
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE);
+    expect(startOnboarding).not.toHaveBeenCalled();
   });
 });

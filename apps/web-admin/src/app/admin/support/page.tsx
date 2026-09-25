@@ -101,12 +101,14 @@ export default function SupportPage() {
     setLoading(true);
     setError(null);
     try {
-      const results = await api.support.lookupUser(q);
+      const results = (await api.support.lookupUser(q)) as UserSearchResult[];
       setSearchResults(results);
       if (results.length > 0) {
         const first = results[0];
-        setSelectedUser(first);
-        await loadDiagnostics(first.id);
+        if (first) {
+          setSelectedUser(first);
+          await loadDiagnostics(first.id);
+        }
       } else {
         setSelectedUser(null);
         setDiagnostics(null);

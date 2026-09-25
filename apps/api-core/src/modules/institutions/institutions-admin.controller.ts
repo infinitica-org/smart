@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
+import { Readable } from 'node:stream';
+import type { FastifyReply } from 'fastify';
 import {
   API_PREFIX,
   CreateInstitutionRequestSchema,
+  ExportAuditLogsQuerySchema,
   GetVerificationReviewQuerySchema,
   GlobalStudentSearchQuerySchema,
   InvitePlatformAdminRequestSchema,
@@ -23,8 +26,11 @@ import {
   GetAdminDashboardQuerySchema,
 } from '@smart/contracts';
 import { Roles } from '../../common/guards/roles.decorator.js';
+import { RequirePermission } from '../../common/guards/permissions.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
+import { AuditLogExportService } from './audit-log-export.service.js';
 import { InstitutionsService } from './institutions.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -44,6 +50,7 @@ export class InstitutionsAdminController {
     @Inject(InstitutionsService) private readonly institutions: InstitutionsService,
     @Inject(KafkaOutboxService) private readonly kafkaOutbox: KafkaOutboxService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+    @Inject(AuditLogExportService) private readonly auditExport: AuditLogExportService,
   ) {}
 
   @Get('partnerships/requests')
@@ -54,6 +61,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('partnerships/requests/:id')
+  @AuditAccess('partnership_request', 'id')
   getPartnershipRequest(@Param('id') id: string) {
     return this.institutions.getPartnershipRequestById(id);
   }
@@ -108,8 +116,11 @@ export class InstitutionsAdminController {
   }
 
   @Post('institutions')
-  createInstitution(@Body() body: unknown) {
-    return this.institutions.createInstitution(CreateInstitutionRequestSchema.parse(body));
+  createInstitution(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.createInstitution(
+      CreateInstitutionRequestSchema.parse(body),
+      user.sub,
+    );
   }
 
   @Get('institutions')
@@ -202,8 +213,27 @@ export class InstitutionsAdminController {
   }
 
   @Get('audit-logs')
+  @RequirePermission('audit.read')
   auditLogs(@Query() query: Record<string, string | undefined>) {
     return this.institutions.listAuditLogs(ListAuditLogsQuerySchema.parse(compactQuery(query)));
+  }
+
+  /** S6-VV-101 (#496) — streams the same filtered audit log as CSV or JSON Lines. */
+  @Get('audit-logs/export')
+  @RequirePermission('audit.export')
+  async exportAuditLogs(
+    @Query() query: Record<string, string | undefined>,
+    @CurrentUser() user: RequestUser,
+    @Res() reply: FastifyReply,
+  ) {
+    const { format, ...filter } = ExportAuditLogsQuerySchema.parse(compactQuery(query));
+    const { lines } = await this.auditExport.prepare(filter, format, user.sub);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return reply
+      .header('Content-Type', format === 'csv' ? 'text/csv; charset=utf-8' : 'application/x-ndjson')
+      .header('Content-Disposition', `attachment; filename="smart-audit-log-${stamp}.${format}"`)
+      .header('Cache-Control', 'no-store')
+      .send(Readable.from(lines));
   }
 
   @Get('verification-queue')
@@ -212,6 +242,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('verification-queue/:tenantId/review')
+  @AuditAccess('tenant_verification', 'tenantId')
   verificationReview(
     @Param('tenantId') tenantId: string,
     @Query() query: Record<string, string | undefined>,
@@ -318,6 +349,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('institutions/:institutionId/students')
+  @AuditAccess('institution_students', 'institutionId')
   listStudents(
     @Param('institutionId') institutionId: string,
     @Query() query: Record<string, string | undefined>,
@@ -370,6 +402,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('institutions/:institutionId/admins')
+  @AuditAccess('institution_admins', 'institutionId')
   listAdmins(@Param('institutionId') institutionId: string) {
     return this.institutions.listInstitutionAdmins(institutionId);
   }

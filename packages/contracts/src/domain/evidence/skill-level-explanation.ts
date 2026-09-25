@@ -31,6 +31,7 @@ export const SkillLevelConclusionSchema = z.object({
   proficiency: z.enum(PROFICIENCY_LEVEL_ORDER).nullable(),
   summary: z.string().max(1000),
   source: z.enum(['SKILL_CLAIM', 'ASSESSMENT', 'FUSION', 'NONE']),
+  claimType: z.enum(['VERIFIED_FACT', 'AI_INFERENCE']).default('VERIFIED_FACT'),
 });
 export type SkillLevelConclusion = z.infer<typeof SkillLevelConclusionSchema>;
 
@@ -78,6 +79,7 @@ export const EmployerSkillConfidenceIndicatorSchema = z.object({
     'MULTI_SOURCE',
     'FRESH_EVIDENCE',
     'LOW_EVIDENCE',
+    'MISSING_EVIDENCE',
     'STALE_EVIDENCE',
     'AI_INFERENCE',
     'DIVERGENT_SOURCES',

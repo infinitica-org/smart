@@ -288,6 +288,7 @@ export const MatchRunDtoSchema = z.object({
   runId: UuidSchema,
   jdId: UuidSchema,
   status: MatchRunStatusSchema,
+  rankerVersion: z.string().optional(),
   eligiblePoolCount: z.number().int().nullable(),
   suggestedCount: z.number().int().nullable(),
   errorMessage: z.string().nullable(),
@@ -787,3 +788,34 @@ export const CandidateDemonstratedSkillsResponseSchema = z.object({
 export type CandidateDemonstratedSkillsResponse = z.infer<
   typeof CandidateDemonstratedSkillsResponseSchema
 >;
+
+/* --------------------------- match quality feedback ------------------------- */
+
+export const MatchFeedbackTargetTypeSchema = z.enum(['STUDENT', 'EMPLOYER']);
+export type MatchFeedbackTargetType = z.infer<typeof MatchFeedbackTargetTypeSchema>;
+
+export const MatchFeedbackRatingSchema = z.enum([
+  'EXCELLENT',
+  'RELEVANT',
+  'PARTIALLY_RELEVANT',
+  'NOT_RELEVANT',
+  'POOR',
+]);
+export type MatchFeedbackRating = z.infer<typeof MatchFeedbackRatingSchema>;
+
+export const SubmitMatchFeedbackRequestSchema = z.object({
+  openingId: UuidSchema.optional(),
+  studentId: UuidSchema.optional(),
+  runId: UuidSchema.optional(),
+  rating: MatchFeedbackRatingSchema,
+  feedbackText: z.string().max(2000).optional(),
+  irrelevantReasons: z.array(z.string().max(100)).max(10).optional(),
+});
+export type SubmitMatchFeedbackRequest = z.infer<typeof SubmitMatchFeedbackRequestSchema>;
+
+export const MatchFeedbackResponseSchema = z.object({
+  feedbackId: UuidSchema,
+  submittedAt: IsoDateTimeSchema,
+  status: z.literal('RECORDED'),
+});
+export type MatchFeedbackResponse = z.infer<typeof MatchFeedbackResponseSchema>;

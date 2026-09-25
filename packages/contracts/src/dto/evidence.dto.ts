@@ -198,3 +198,19 @@ export const CandidateEvidenceProvenanceResponseSchema = z.object({
 export type CandidateEvidenceProvenanceResponse = z.infer<
   typeof CandidateEvidenceProvenanceResponseSchema
 >;
+
+export const EvidenceSkillDisputeRequestSchema = z.object({
+  evidenceId: UuidSchema,
+  skillCode: TaxonomySkillCodeSchema,
+  reason: z.string().min(8).max(2_000),
+});
+export type EvidenceSkillDisputeRequest = z.infer<typeof EvidenceSkillDisputeRequestSchema>;
+
+export const EvidenceSkillDisputeResponseSchema = z.object({
+  disputeId: UuidSchema,
+  evidenceId: UuidSchema,
+  skillCode: TaxonomySkillCodeSchema,
+  status: z.literal('UNDER_REVIEW'),
+  submittedAt: IsoDateTimeSchema,
+});
+export type EvidenceSkillDisputeResponse = z.infer<typeof EvidenceSkillDisputeResponseSchema>;

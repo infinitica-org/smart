@@ -63,8 +63,11 @@ function conclusion(
   proficiency: ProficiencyLevel | null,
   summary: string,
   source: 'SKILL_CLAIM' | 'ASSESSMENT' | 'FUSION' | 'NONE',
+  claimType: 'VERIFIED_FACT' | 'AI_INFERENCE' = source === 'FUSION'
+    ? 'AI_INFERENCE'
+    : 'VERIFIED_FACT',
 ) {
-  return { proficiency, summary, source };
+  return { proficiency, summary, source, claimType };
 }
 
 function resolveAlignment(
@@ -314,7 +317,13 @@ export function buildEmployerConfidenceIndicators(
     });
   }
 
-  if (evidenceCount < 2) {
+  if (evidenceCount === 0) {
+    indicators.push({
+      code: 'MISSING_EVIDENCE',
+      label: 'Missing required evidence — assessment or project not yet provided',
+      tone: 'caution',
+    });
+  } else if (evidenceCount < 2) {
     indicators.push({
       code: 'LOW_EVIDENCE',
       label: 'Limited linked evidence for this skill',

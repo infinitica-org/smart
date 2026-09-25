@@ -365,6 +365,10 @@ export class CompanyOnboardingService {
     const submittedAt = new Date();
     const isResubmission =
       session.companyId != null && session.onboardingStatus === 'RESUBMISSION_ALLOWED';
+    // Re-uploads after a rejection land on the reviewed submission; carry them forward.
+    const previousVerification = isResubmission
+      ? await resolveCurrentSessionVerification(this.prisma, session)
+      : null;
 
     const result = await this.prisma.$transaction(async (tx) => {
       let companyId = session.companyId;
@@ -406,6 +410,17 @@ export class CompanyOnboardingService {
           submittedAt,
         },
       });
+
+      if (previousVerification) {
+        // Rejected files stay with the old submission as history; everything else is re-reviewed.
+        await tx.companyVerificationDocument.updateMany({
+          where: {
+            companyVerificationId: previousVerification.id,
+            reviewStatus: { not: 'REJECTED' },
+          },
+          data: { companyVerificationId: submission.id },
+        });
+      }
 
       await tx.companyOnboardingSession.update({
         where: { id: session.id },
@@ -608,6 +623,10 @@ export class CompanyOnboardingService {
       companyId: session.companyId,
       onboardingStatus: session.onboardingStatus,
       verificationStatus: session.company?.verificationStatus ?? null,
+      verificationReason:
+        session.onboardingStatus === 'RESUBMISSION_ALLOWED'
+          ? (session.company?.verificationReason ?? null)
+          : null,
       profile: draft.profile ?? {},
       representative: {
         ...(session.representativeSnapshot as object),

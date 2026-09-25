@@ -8,6 +8,7 @@ import {
   type QlixRecalibrationSample,
 } from '@smart/scoring-engine';
 import { qlixRecalibrationRuns, qlixRecalibrationWeightVersion } from '@smart/observability';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { SignalWeightModelStore } from '../corroboration/signal-weight-model.store.js';
 
@@ -18,6 +19,7 @@ export class QlixRecalibrationService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(SignalWeightModelStore) private readonly weightModels: SignalWeightModelStore,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async runBatch(): Promise<QlixRecalibrationReport> {
@@ -35,6 +37,24 @@ export class QlixRecalibrationService {
 
     await this.weightModels.saveLastReport(report);
     qlixRecalibrationRuns.inc({ published: report.published ? 'true' : 'false' });
+    // S6-VV-102 (#492) — one summary row per run (not one per affected score).
+    await this.auditPublisher.record({
+      actorId: null,
+      action: 'score.recalibration_run',
+      resourceType: 'SignalWeightModel',
+      resourceId: null,
+      reasonCode: report.published ? 'published' : 'skipped',
+      metadata: {
+        predictor: report.predictor,
+        sampleSize: report.sampleSize,
+        correlation: report.correlation,
+        auc: report.auc,
+        previousWeight: report.previousWeight,
+        nextWeight: report.nextWeight,
+        published: report.published,
+        message: report.reason,
+      },
+    });
 
     this.logger.log(
       `QLIX recalibration ${report.published ? 'published' : 'skipped'}: ${report.reason}`,

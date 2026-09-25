@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { InstitutionsTpoController } from './institutions-tpo.controller.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const actorId = randomUUID();
@@ -46,6 +47,7 @@ describe('InstitutionsTpoController import boundary', () => {
         'true',
         multipartRequest([filePart()]) as never,
         user as never,
+        resolveTenantId(user as never),
       ),
     ).resolves.toMatchObject({ headers: ['Student Name', 'Email Address'] });
     expect(previewBatchImport).toHaveBeenCalledWith(
@@ -71,6 +73,7 @@ describe('InstitutionsTpoController import boundary', () => {
       undefined,
       multipartRequest([mapping, filePart()]) as never,
       user as never,
+      resolveTenantId(user as never),
     );
     expect(importBatchMembers).toHaveBeenCalledWith(
       batchId,
@@ -92,7 +95,13 @@ describe('InstitutionsTpoController import boundary', () => {
   ])('returns a safe 400 response for malformed multipart input', async (parts, message) => {
     const controller = new InstitutionsTpoController({} as never);
     await expect(
-      controller.importMembers(batchId, undefined, multipartRequest(parts) as never, user as never),
+      controller.importMembers(
+        batchId,
+        undefined,
+        multipartRequest(parts) as never,
+        user as never,
+        resolveTenantId(user as never),
+      ),
     ).rejects.toMatchObject({ message });
   });
 
@@ -106,6 +115,7 @@ describe('InstitutionsTpoController import boundary', () => {
         undefined,
         multipartRequest([brokenFile]) as never,
         user as never,
+        resolveTenantId(user as never),
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -113,14 +123,18 @@ describe('InstitutionsTpoController import boundary', () => {
   it('rejects an administrator without an institution before reading the upload', async () => {
     const controller = new InstitutionsTpoController({} as never);
     await expect(
-      controller.importMembers(
-        batchId,
-        'true',
-        multipartRequest([filePart()]) as never,
-        {
-          sub: actorId,
-        } as never,
-      ),
+      (async () =>
+        controller.importMembers(
+          batchId,
+          'true',
+          multipartRequest([filePart()]) as never,
+          {
+            sub: actorId,
+          } as never,
+          resolveTenantId({
+            sub: actorId,
+          } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -129,7 +143,9 @@ describe('InstitutionsTpoController import boundary', () => {
       .fn()
       .mockResolvedValue({ invitationId: 'inv-1', status: 'REVOKED' });
     const controller = new InstitutionsTpoController({ revokeStudentInvitation } as never);
-    await expect(controller.revokeInvitation('inv-1', user as never)).resolves.toEqual({
+    await expect(
+      controller.revokeInvitation('inv-1', resolveTenantId(user as never)),
+    ).resolves.toEqual({
       invitationId: 'inv-1',
       status: 'REVOKED',
     });

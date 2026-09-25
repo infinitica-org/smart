@@ -9,6 +9,7 @@ import { ZodError } from 'zod';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementService } from './placement.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const studentId = randomUUID();
@@ -66,7 +67,7 @@ describe('POST /placement/outcomes', () => {
       createdAt,
     });
 
-    const dto = await controller.recordOutcome(tpoAdmin as never, validBody);
+    const dto = await controller.recordOutcome(validBody, resolveTenantId(tpoAdmin as never));
 
     expect(dto.recordId).toBe(recordId);
     expect(dto.tierAtPlacement).toBe('GOLD');
@@ -77,9 +78,9 @@ describe('POST /placement/outcomes', () => {
     const { controller, prisma } = setup();
     prisma.user.findFirst.mockResolvedValue(null);
 
-    await expect(controller.recordOutcome(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.recordOutcome(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects students without an issued certificate', async () => {
@@ -88,16 +89,19 @@ describe('POST /placement/outcomes', () => {
     prisma.track.findUnique.mockResolvedValue({ id: randomUUID(), code: 'TECH_FULLSTACK' });
     prisma.certificate.findFirst.mockResolvedValue(null);
 
-    await expect(controller.recordOutcome(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      UnprocessableEntityException,
-    );
+    await expect(
+      controller.recordOutcome(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
   it('rejects invalid payloads before touching the database', async () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.recordOutcome(tpoAdmin as never, { ...validBody, placementCycle: 'bad-cycle' }),
+      controller.recordOutcome(
+        { ...validBody, placementCycle: 'bad-cycle' },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
@@ -106,7 +110,11 @@ describe('POST /placement/outcomes', () => {
     const { controller } = setup();
 
     await expect(
-      controller.recordOutcome({ sub: actorId, role: 'PLACEMENT_STAFF' } as never, validBody),
+      (async () =>
+        controller.recordOutcome(
+          validBody,
+          resolveTenantId({ sub: actorId, role: 'PLACEMENT_STAFF' } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

@@ -337,8 +337,101 @@ describe('AuthService.login lockout (S6-VV-92)', () => {
   });
 });
 
+describe('AuthService.login failure audit (S6-VV-143)', () => {
+  function service(user: unknown) {
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      { user: { findUnique: vi.fn(async () => user), update: vi.fn() } } as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      auditPublisher as never,
+    );
+    return { auth, auditPublisher };
+  }
+  const reply = { request: { ip: '203.0.113.7' } } as never;
+
+  it('records an unknown email only as a hash', async () => {
+    const { auth, auditPublisher } = service(null);
+
+    await expect(auth.login('Nobody@Example.com', 'x', reply)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    const call = auditPublisher.record.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      actorId: null,
+      action: 'auth.login_failed',
+      resourceId: null,
+      reasonCode: 'unknown_email',
+      metadata: { ip: '203.0.113.7', emailSha256: expect.stringMatching(/^[0-9a-f]{64}$/) },
+    });
+    expect(JSON.stringify(call)).not.toContain('nobody@example.com');
+  });
+
+  it('records a wrong password against the targeted account', async () => {
+    const user = userRow({ passwordHash: await hashPassword('correct-password') });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'wrong', reply)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: null,
+        action: 'auth.login_failed',
+        resourceId: user.id,
+        reasonCode: 'bad_password',
+      }),
+    );
+  });
+
+  it('records an attempt against a locked account', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      loginLockedUntil: new Date(Date.now() + 60_000),
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'locked' }),
+    );
+  });
+
+  it('records a sign-in blocked by a tenant hold', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      institutionId: randomUUID(),
+      institution: { name: 'Held College', heldAt: new Date(), deactivatedAt: null },
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'tenant_blocked' }),
+    );
+  });
+
+  it('records a sign-in to a deactivated account', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      deactivatedAt: new Date(),
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'deactivated' }),
+    );
+  });
+});
+
 describe('AuthService.register', () => {
-  it('creates a STUDENT user, hashes the password, and issues a session', async () => {
+  it('creates an unverified STUDENT and does not sign them in', async () => {
     const institutionId = randomUUID();
     const prisma = {
       user: {
@@ -361,19 +454,16 @@ describe('AuthService.register', () => {
       storage as never,
       mockAuditPublisher() as never,
     );
-    const reply = { setCookie: vi.fn() };
 
-    const result = await auth.register(
-      {
-        email: 'New@Example.com',
-        password: 'password1',
-        fullName: 'New Student',
-        institutionId,
-      },
-      reply as never,
-    );
+    const user = await auth.register({
+      email: 'New@Example.com',
+      password: 'password1',
+      fullName: 'New Student',
+      institutionId,
+    });
 
-    expect(result.accessToken).toBe('access.jwt');
+    expect(user.email).toBe('new@example.com');
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     expect(prisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -396,15 +486,12 @@ describe('AuthService.register', () => {
     );
 
     await expect(
-      auth.register(
-        {
-          email: 'student@example.com',
-          password: 'password1',
-          fullName: 'X',
-          institutionId: randomUUID(),
-        },
-        {} as never,
-      ),
+      auth.register({
+        email: 'student@example.com',
+        password: 'password1',
+        fullName: 'X',
+        institutionId: randomUUID(),
+      }),
     ).rejects.toMatchObject({ response: { statusCode: 409 } });
   });
 
@@ -421,15 +508,12 @@ describe('AuthService.register', () => {
     );
 
     await expect(
-      auth.register(
-        {
-          email: 'x@example.com',
-          password: 'password1',
-          fullName: 'X',
-          institutionId: randomUUID(),
-        },
-        {} as never,
-      ),
+      auth.register({
+        email: 'x@example.com',
+        password: 'password1',
+        fullName: 'X',
+        institutionId: randomUUID(),
+      }),
     ).rejects.toMatchObject({ response: { statusCode: 404 } });
   });
 });
@@ -593,5 +677,129 @@ describe('password hashing', () => {
     const { verifyPassword } = await import('./auth.service.js');
     expect(await verifyPassword('ChangeMe!Dev', stored)).toBe(true);
     expect(await verifyPassword('wrong-password', stored)).toBe(false);
+  });
+});
+
+describe('AuthService email verification gate (#156)', () => {
+  function authFor(user: ReturnType<typeof userRow>) {
+    const prisma = {
+      user: { findUnique: vi.fn(async () => user), update: vi.fn() },
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      mockAuditPublisher() as never,
+    );
+    return { auth, prisma };
+  }
+
+  it('refuses a correct-password sign-in by an unverified student', async () => {
+    const user = userRow({
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth, prisma } = authFor(user);
+
+    await expect(
+      auth.login('student@example.com', 'correct-password', { setCookie: vi.fn() } as never),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'email_not_verified', statusCode: 403 }),
+    });
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('still answers a wrong password with the generic 401, not the verification error', async () => {
+    const user = userRow({
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth } = authFor(user);
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'unauthorized' }) });
+  });
+
+  it('does not gate invited staff roles', async () => {
+    const user = userRow({
+      role: 'INSTITUTION_ADMIN',
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth } = authFor(user);
+
+    const result = await auth.login('student@example.com', 'correct-password', {
+      setCookie: vi.fn(),
+    } as never);
+    expect(result.accessToken).toBe('access.jwt');
+  });
+
+  it('ends an existing session on refresh while the student is unverified', async () => {
+    const raw = 'refresh-token';
+    const existing = {
+      id: randomUUID(),
+      familyId: randomUUID(),
+      userId: randomUUID(),
+      tokenHash: hashRefreshToken(raw),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      user: userRow({ emailVerified: false }),
+    };
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => existing), update: vi.fn(), create: vi.fn() },
+      $transaction: vi.fn(),
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+    const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
+
+    await expect(
+      auth.refresh({ cookies: { smart_refresh: raw } } as never, reply as never),
+    ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'email_not_verified' }) });
+    expect(reply.clearCookie).toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('company portal account status (S6-VV-139)', () => {
+  function service(user: unknown) {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    return new AuthService(
+      prisma as never,
+      {} as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
+  }
+
+  it('never reports a COMPANY user without a company as approved', async () => {
+    const auth = service(userRow({ role: 'COMPANY', email: 'rep@acme.example', company: null }));
+
+    const account = await auth.getCompanyPortalAccount('user-1');
+
+    expect(account.companyVerificationStatus).toBe('PENDING');
+  });
+
+  it('reports a company hold when verification was revoked after sign-in', () => {
+    const user = _toAuthenticatedUser(
+      userRow({
+        role: 'COMPANY',
+        company: {
+          name: 'Acme',
+          heldAt: null,
+          deactivatedAt: null,
+          verificationStatus: 'REJECTED',
+        },
+      }) as never,
+    );
+
+    expect(user.sessionHold).toMatchObject({ code: 'company_held' });
   });
 });

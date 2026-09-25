@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { StorageModule } from '../../platform/storage/storage.module.js';
 import { InvitationsModule } from '../invitations/invitations.module.js';
+import { AuditLogExportService } from './audit-log-export.service.js';
 import { CompaniesAdminController } from './companies-admin.controller.js';
 import { CompanyOnboardingDocumentService } from './company-onboarding-document.service.js';
 import { CompanyOnboardingService } from './company-onboarding.service.js';
@@ -29,6 +30,7 @@ import { OrganizationsService } from './organizations.service.js';
   ],
   providers: [
     InstitutionsService,
+    AuditLogExportService,
     CompaniesService,
     OrganizationsService,
     CompanyOnboardingDocumentService,

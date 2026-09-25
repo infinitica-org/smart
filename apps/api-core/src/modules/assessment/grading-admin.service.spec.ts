@@ -109,7 +109,11 @@ describe('GradingAdminService (T17)', () => {
     );
     const result = await service.gradeResponse(actorId, responseId, { score: 8 });
     expect(result.evaluatedBy).toBe('HUMAN_RATER');
-    expect(recalculation.recalculateForAttempt).toHaveBeenCalledWith(attemptId);
+    expect(recalculation.recalculateForAttempt).toHaveBeenCalledWith(attemptId, {
+      actorId,
+      trigger: 'manual_grade',
+      reasonCode: null,
+    });
     expect(auditPublisher.record).toHaveBeenCalledTimes(1);
   });
 

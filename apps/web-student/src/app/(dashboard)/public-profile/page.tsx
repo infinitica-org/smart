@@ -295,7 +295,7 @@ export default function PublicProfilePreviewPage() {
                             </p>
                             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                               {formatDate(entry.startDate)} –{' '}
-                              {entry.isCurrent
+                              {entry.current
                                 ? 'Present'
                                 : entry.endDate
                                   ? formatDate(entry.endDate)

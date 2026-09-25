@@ -21,6 +21,7 @@ import {
   controlButtonClassName,
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
+import { formatRecordActors } from '@/lib/record-actors';
 
 export default function CompanyDetailPage() {
   const params = useParams<{ companyId: string }>();
@@ -61,7 +62,12 @@ export default function CompanyDetailPage() {
       <PageHeader
         icon={Building2}
         title={company.name}
-        description={`${company.planCode} · ${company.verificationStatus}`}
+        description={[
+          `${company.planCode} · ${company.verificationStatus}`,
+          formatRecordActors(company),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       >
         <Button variant="outline" className="rounded-md" asChild>
           <Link href="/admin/companies">
