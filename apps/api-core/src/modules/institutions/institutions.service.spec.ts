@@ -24,6 +24,7 @@ describe('InstitutionsService Batch Operations', () => {
       batch: {
         create: vi.fn().mockResolvedValue(fakeBatch),
       },
+      campus: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const service = new InstitutionsService(
       prisma as never,
@@ -47,6 +48,7 @@ describe('InstitutionsService Batch Operations', () => {
       batch: {
         create: vi.fn().mockRejectedValue(new Error('Unique constraint failed')),
       },
+      campus: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const service = new InstitutionsService(
       prisma as never,
@@ -58,6 +60,37 @@ describe('InstitutionsService Batch Operations', () => {
     await expect(
       service.createBatch(institutionId, { name: 'Class of 2026' }, invitedById),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('S6-VV-112: a new batch lands on the primary campus, and the list filters by campus', async () => {
+    const campusId = randomUUID();
+    const prisma = {
+      batch: {
+        create: vi
+          .fn()
+          .mockResolvedValue({ ...fakeBatch, campusId, campus: { name: 'Main campus' } }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      campus: { findFirst: vi.fn().mockResolvedValue({ id: campusId }) },
+    };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+      {} as never,
+    );
+
+    const dto = await service.createBatch(institutionId, { name: 'Class of 2026' }, invitedById);
+    expect(prisma.campus.findFirst).toHaveBeenCalledWith({
+      where: { institutionId, isPrimary: true, archivedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.batch.create.mock.calls[0]?.[0].data.campusId).toBe(campusId);
+    expect(dto).toMatchObject({ campusId, campusName: 'Main campus' });
+
+    await service.listBatches(institutionId, { campusId });
+    expect(prisma.batch.findMany.mock.calls[0]?.[0].where).toEqual({ institutionId, campusId });
   });
 
   it('TPO can retrieve their institution batches', async () => {

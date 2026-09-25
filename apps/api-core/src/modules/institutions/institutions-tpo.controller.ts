@@ -19,6 +19,7 @@ import {
   ConfigureInstitutionSettingsSchema,
   CreateBatchRequestSchema,
   InviteStaffRequestSchema,
+  ListBatchesQuerySchema,
   UpdateStaffRoleRequestSchema,
   UpdateStaffCampusRequestSchema,
   ListInstitutionStudentsQuerySchema,
@@ -128,8 +129,11 @@ export class InstitutionsTpoController {
   }
 
   @Get('batches')
-  listBatches(@TenantId() institutionId: string) {
-    return this.institutions.listBatches(institutionId);
+  listBatches(
+    @Query() query: Record<string, string | undefined>,
+    @TenantId() institutionId: string,
+  ) {
+    return this.institutions.listBatches(institutionId, ListBatchesQuerySchema.parse(query));
   }
 
   @Get('batches/:batchId')

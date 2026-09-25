@@ -23,6 +23,7 @@ import type {
   BatchImportResultDto,
   BatchMemberDto,
   CreateBatchRequest,
+  ListBatchesQuery,
   CreateInstitutionRequest,
   ConfigureInstitutionSettings,
   CreatePartnershipRequest,
@@ -86,6 +87,7 @@ import {
   type EmailJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { resolveBatchCampus } from './campuses.service.js';
 import { resolveRecordActors } from './record-actors.js';
 import { buildAuditLogWhere } from './audit-log-query.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
@@ -355,6 +357,8 @@ export class InstitutionsService {
         planId: freePlan.id,
         createdById: actorId,
         updatedById: actorId,
+        // S6-VV-112 — every institution starts with one primary campus.
+        campuses: { create: { name: 'Main campus', isPrimary: true } },
       },
       include: { plan: true },
     });
@@ -768,6 +772,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     const where: Prisma.UserWhereInput = { institutionId, role: 'STUDENT' };
     if (query.batchId) where.batchId = query.batchId;
+    if (query.campusId) where.batch = { campusId: query.campusId };
     if (query.q) {
       where.OR = [
         { fullName: { contains: query.q, mode: 'insensitive' } },
@@ -2298,14 +2303,17 @@ export class InstitutionsService {
     body: CreateBatchRequest,
     createdById: string,
   ): Promise<BatchDto> {
+    const campusId = await resolveBatchCampus(this.prisma, institutionId, body.campusId);
     try {
       const batch = await this.prisma.batch.create({
         data: {
           institutionId,
           name: body.name,
           code: body.code ?? null,
+          campusId,
           createdById,
         },
+        include: BATCH_CAMPUS,
       });
       return toBatchDto(batch, 0, 0);
     } catch {
@@ -2317,9 +2325,10 @@ export class InstitutionsService {
     }
   }
 
-  async listBatches(institutionId: string): Promise<BatchDto[]> {
+  async listBatches(institutionId: string, query: ListBatchesQuery = {}): Promise<BatchDto[]> {
     const batches = await this.prisma.batch.findMany({
-      where: { institutionId },
+      where: { institutionId, ...(query.campusId ? { campusId: query.campusId } : {}) },
+      include: BATCH_CAMPUS,
       orderBy: { createdAt: 'desc' },
     });
     return Promise.all(
@@ -2352,12 +2361,18 @@ export class InstitutionsService {
     body: UpdateBatchRequest,
   ): Promise<BatchDto> {
     await this.requireBatch(batchId, institutionId);
+    const campusId =
+      body.campusId === undefined
+        ? undefined
+        : await resolveBatchCampus(this.prisma, institutionId, body.campusId);
     const batch = await this.prisma.batch.update({
       where: { id: batchId },
       data: {
         name: body.name,
         code: body.code === null ? null : body.code,
+        campusId,
       },
+      include: BATCH_CAMPUS,
     });
     const memberCount = await this.prisma.user.count({ where: { batchId, role: 'STUDENT' } });
     const pendingInviteCount = await this.prisma.invitation.count({
@@ -2921,7 +2936,10 @@ export class InstitutionsService {
   }
 
   private async requireBatch(batchId: string, institutionId: string) {
-    const batch = await this.prisma.batch.findFirst({ where: { id: batchId, institutionId } });
+    const batch = await this.prisma.batch.findFirst({
+      where: { id: batchId, institutionId },
+      include: BATCH_CAMPUS,
+    });
     if (!batch) {
       throw new NotFoundException({
         error: 'not_found',
@@ -2947,8 +2965,18 @@ function toUniversityContactRequestDto(row: {
   };
 }
 
+const BATCH_CAMPUS = { campus: { select: { name: true } } } as const;
+
 function toBatchDto(
-  batch: { id: string; institutionId: string; name: string; code: string | null; createdAt: Date },
+  batch: {
+    id: string;
+    institutionId: string;
+    name: string;
+    code: string | null;
+    campusId: string | null;
+    campus: { name: string } | null;
+    createdAt: Date;
+  },
   memberCount: number,
   pendingInviteCount: number,
 ): BatchDto {
@@ -2957,6 +2985,8 @@ function toBatchDto(
     institutionId: batch.institutionId,
     name: batch.name,
     code: batch.code,
+    campusId: batch.campusId,
+    campusName: batch.campus?.name ?? null,
     memberCount,
     pendingInviteCount,
     createdAt: batch.createdAt.toISOString(),
