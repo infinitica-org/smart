@@ -62,7 +62,8 @@ function setup(rows: Row[]) {
       return { count: 1 };
     }),
     update: vi.fn(async ({ where, data }) => {
-      const row = rows.find((candidate) => candidate.id === where.id)!;
+      const row = rows.find((candidate) => candidate.id === where.id);
+      if (!row) throw new Error(`no campus ${where.id}`);
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined) (row as Record<string, unknown>)[key] = value;
       });
