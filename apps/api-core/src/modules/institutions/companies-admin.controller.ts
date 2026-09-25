@@ -10,6 +10,7 @@ import {
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { CompaniesService } from './companies.service.js';
 
 function compactQuery(
@@ -36,6 +37,7 @@ export class CompaniesAdminController {
   }
 
   @Get(':companyId')
+  @AuditAccess('company', 'companyId')
   get(@Param('companyId') companyId: string) {
     return this.companies.getCompany(companyId);
   }

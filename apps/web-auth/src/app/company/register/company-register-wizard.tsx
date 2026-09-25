@@ -6,6 +6,8 @@ import { describeApiError } from '@smart/api-client';
 import {
   COMPANY_SIZE_BANDS,
   COMPANY_SIZE_BAND_LABELS,
+  COMPANY_WORK_EMAIL_REQUIRED_MESSAGE,
+  isFreeMailDomain,
   type CompanySizeBand,
 } from '@smart/contracts';
 import { SmartLogo } from '@smart/ui';
@@ -115,8 +117,18 @@ export function CompanyRegisterWizard() {
     });
   }, [resumeSession]);
 
+  // Only flag a finished address, so the hint doesn't flash while the domain is still being typed.
+  const personalEmailError =
+    workEmail.includes('@') && workEmail.trim().includes('.') && isFreeMailDomain(workEmail)
+      ? COMPANY_WORK_EMAIL_REQUIRED_MESSAGE
+      : null;
+
   async function onStart(event: React.FormEvent) {
     event.preventDefault();
+    if (isFreeMailDomain(workEmail)) {
+      setError(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -295,7 +307,14 @@ export function CompanyRegisterWizard() {
               className={inputClass}
               value={workEmail}
               onChange={(e) => setWorkEmail(e.target.value)}
+              aria-invalid={personalEmailError ? true : undefined}
+              aria-describedby={personalEmailError ? 'workEmail-error' : undefined}
             />
+            {personalEmailError ? (
+              <p id="workEmail-error" className="mt-1.5 text-xs text-[#c24141]">
+                {personalEmailError}
+              </p>
+            ) : null}
           </div>
           <div>
             <label htmlFor="website" className={labelClass}>

@@ -14,6 +14,7 @@ import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import { cacheOperations } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { resolveRecordActors } from './record-actors.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { formatCompanyLocation } from './company-onboarding.util.js';
 import { extractDomain } from '../work-experience/company-name.util.js';
@@ -97,6 +98,8 @@ export class CompaniesService {
           name: body.name,
           domain: websiteDomain,
           verificationStatus: 'APPROVED',
+          createdById: actorId,
+          updatedById: actorId,
         },
       });
     }
@@ -114,6 +117,8 @@ export class CompaniesService {
         planId: freePlan.id,
         verificationStatus: 'APPROVED',
         organizationId: org.id,
+        createdById: actorId,
+        updatedById: actorId,
       },
     });
     await this.writeAudit(actorId, 'company.created', company.id, 'created by super admin', {});
@@ -151,8 +156,11 @@ export class CompaniesService {
 
   async getCompany(companyId: string): Promise<CompanyDto> {
     const company = await this.requireCompany(companyId);
-    const userCount = await this.prisma.user.count({ where: { companyId } });
-    return this.toDto(company, userCount);
+    const [userCount, actors] = await Promise.all([
+      this.prisma.user.count({ where: { companyId } }),
+      resolveRecordActors(this.prisma, company),
+    ]);
+    return { ...this.toDto(company, userCount), ...actors };
   }
 
   async updateCompany(
@@ -182,6 +190,7 @@ export class CompaniesService {
       }
       data.plan = { connect: { id: plan.id } };
     }
+    data.updatedBy = { connect: { id: actorId } };
     await this.prisma.company.update({ where: { id: companyId }, data });
     if (body.planCode) {
       await this.redis.del(ENTITLEMENTS_CACHE_KEY(companyId));
@@ -198,7 +207,10 @@ export class CompaniesService {
     actorId: string,
   ): Promise<CompanyDto> {
     await this.requireCompany(companyId);
-    await this.prisma.company.update({ where: { id: companyId }, data: { heldAt: new Date() } });
+    await this.prisma.company.update({
+      where: { id: companyId },
+      data: { heldAt: new Date(), updatedById: actorId },
+    });
     await this.writeAudit(actorId, 'company.held', companyId, body.reason, {});
     return this.getCompany(companyId);
   }
@@ -209,7 +221,10 @@ export class CompaniesService {
     actorId: string,
   ): Promise<CompanyDto> {
     await this.requireCompany(companyId);
-    await this.prisma.company.update({ where: { id: companyId }, data: { heldAt: null } });
+    await this.prisma.company.update({
+      where: { id: companyId },
+      data: { heldAt: null, updatedById: actorId },
+    });
     await this.writeAudit(actorId, 'company.hold_released', companyId, body.reason, {});
     return this.getCompany(companyId);
   }
@@ -222,7 +237,7 @@ export class CompaniesService {
     await this.requireCompany(companyId);
     await this.prisma.company.update({
       where: { id: companyId },
-      data: { deactivatedAt: new Date() },
+      data: { deactivatedAt: new Date(), updatedById: actorId },
     });
     await this.writeAudit(actorId, 'company.deactivated', companyId, body.reason, {});
     return this.getCompany(companyId);
@@ -236,7 +251,7 @@ export class CompaniesService {
     await this.requireCompany(companyId);
     await this.prisma.company.update({
       where: { id: companyId },
-      data: { deactivatedAt: null, heldAt: null },
+      data: { deactivatedAt: null, heldAt: null, updatedById: actorId },
     });
     await this.writeAudit(actorId, 'company.restored', companyId, body.reason, {});
     return this.getCompany(companyId);
