@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { queryKeys } from '@smart/api-client';
 import type { WorkExperienceDto } from '@smart/contracts';
-import { cn, useQuery } from '@smart/ui';
+import { cn, useQuery, VerifiedBadge } from '@smart/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../../lib/api';
 import {
@@ -549,8 +549,13 @@ export function MyApplicationsTracker({
                           <p className="truncate text-xs font-bold text-zinc-900 dark:text-white">
                             {app.roleTitle}
                           </p>
-                          <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                             {app.companyName}
+                            <VerifiedBadge
+                              verified={app.companyVerified === true}
+                              verifiedAt={app.companyVerifiedAt}
+                              variant="icon"
+                            />
                           </p>
                         </div>
                         {score && (
@@ -576,6 +581,10 @@ export function MyApplicationsTracker({
                     <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                       {selectedApp.companyName}
                     </span>
+                    <VerifiedBadge
+                      verified={selectedApp.companyVerified === true}
+                      verifiedAt={selectedApp.companyVerifiedAt}
+                    />
                     {selectedApp.location && (
                       <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
                         <MapPin className="size-3.5 text-zinc-400" /> {selectedApp.location}

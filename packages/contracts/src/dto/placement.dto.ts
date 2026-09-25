@@ -598,6 +598,9 @@ export const CandidateApplicationDtoSchema = ApplicationDtoSchema.extend({
   location: z.string().max(120),
   employmentType: EmploymentTypeSchema.nullable(),
   domain: SkillTaxonomyDomainSchema.nullable(),
+  /** Th6-354 — server-derived from the linked company's verification status; never inferred by the UI. */
+  companyVerified: z.boolean().optional(),
+  companyVerifiedAt: IsoDateTimeSchema.nullable().optional(),
 });
 export type CandidateApplicationDto = z.infer<typeof CandidateApplicationDtoSchema>;
 

@@ -7,6 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import type {
+  CompanyMemberRole,
   InvitationDto,
   InvitationPreviewDto,
   InvitationStatus,
@@ -132,6 +133,11 @@ export class InvitationsService {
     groupLabel?: string | null;
     invitedById: string;
     sendEmail?: boolean;
+    /** EMP-02 — employer-side invite: the company tenant and the role the invitee joins with. */
+    companyId?: string | null;
+    companyRole?: CompanyMemberRole | null;
+    /** Name shown in the invite email when the tenant is a company rather than an institution. */
+    tenantName?: string;
   }): Promise<{ invitation: InvitationDto; rawToken: string }> {
     const email = params.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -143,7 +149,7 @@ export class InvitationsService {
       });
     }
 
-    let institutionName = 'SMART Platform';
+    let institutionName = params.tenantName ?? 'SMART Platform';
     if (params.institutionId) {
       const institution = await this.prisma.institution.findUnique({
         where: { id: params.institutionId },
@@ -169,6 +175,8 @@ export class InvitationsService {
         institutionId: params.institutionId,
         batchId: params.batchId ?? null,
         groupLabel: params.groupLabel ?? null,
+        companyId: params.companyId ?? null,
+        companyRole: params.companyRole ?? null,
         emailVerified: false,
         passwordHash: null,
       },
@@ -182,6 +190,8 @@ export class InvitationsService {
         institutionId: params.institutionId,
         batchId: params.batchId ?? null,
         groupLabel: params.groupLabel ?? null,
+        companyId: params.companyId ?? null,
+        companyRole: params.companyRole ?? null,
         userId: user.id,
         tokenHash: hash,
         status: 'PENDING',

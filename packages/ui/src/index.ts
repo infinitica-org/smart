@@ -33,6 +33,11 @@ export {
   type CardVariant,
   type CardProps,
 } from './components/card';
+export {
+  VerifiedBadge,
+  verifiedTooltip,
+  type VerifiedBadgeProps,
+} from './components/verified-badge';
 export { StatusBadge, type WorkflowStatus, type StatusBadgeProps } from './components/status-badge';
 export { Modal, type ModalSize, type ModalProps } from './components/modal';
 export {

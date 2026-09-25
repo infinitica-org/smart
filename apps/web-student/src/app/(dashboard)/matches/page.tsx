@@ -20,7 +20,7 @@ import {
   AlertCircle,
   Plus,
 } from 'lucide-react';
-import { cn } from '@smart/ui';
+import { cn, VerifiedBadge } from '@smart/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 import { canVerifySkills } from '@/lib/profile-progress';
@@ -62,6 +62,8 @@ interface AppliedApplication {
   salary: string;
   appliedDate: string;
   status: 'Applied' | 'Viewed' | 'Interviewing' | 'Rejected' | 'Hired';
+  companyVerified?: boolean;
+  companyVerifiedAt?: string | null;
 }
 
 export default function MatchesPage() {
@@ -91,6 +93,8 @@ export default function MatchesPage() {
       jobId: app.applicationId,
       title: app.roleTitle || 'Software Engineer',
       company: app.companyName || 'Campus Placement Partner',
+      companyVerified: app.companyVerified === true,
+      companyVerifiedAt: app.companyVerifiedAt ?? null,
       logoText: (app.companyName || 'SM').slice(0, 2).toUpperCase(),
       location: app.location || 'Remote',
       salary: 'Competitive CTC',
@@ -413,8 +417,14 @@ export default function MatchesPage() {
                       <h3 className="font-heading text-sm font-bold text-zinc-950 dark:text-white">
                         {app.title}
                       </h3>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {app.company} · {app.location} · {app.salary}
+                      <p className="flex flex-wrap items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        {app.company}
+                        <VerifiedBadge
+                          verified={app.companyVerified === true}
+                          verifiedAt={app.companyVerifiedAt}
+                          variant="icon"
+                        />
+                        · {app.location} · {app.salary}
                       </p>
                     </div>
                   </div>

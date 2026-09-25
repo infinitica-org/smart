@@ -16,6 +16,7 @@
 
 /* ------------------------------- domain ---------------------------------- */
 export * from './domain/enums.js';
+export * from './domain/company-permissions.js';
 export * from './domain/disallowed-email-domains.js';
 export * from './domain/levels.js';
 export * from './domain/tracks.js';
@@ -41,6 +42,8 @@ export * from './placement/job-opening-eligibility.js';
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
 export * from './dto/auth.dto.js';
+export * from './dto/company-team.dto.js';
+export * from './dto/company-review.dto.js';
 export * from './dto/catalog.dto.js';
 export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';

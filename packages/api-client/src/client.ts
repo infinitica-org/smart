@@ -53,6 +53,8 @@ export interface RequestOptions<TResponse> {
   readonly signal?: AbortSignal;
   /** Skips the auth header, for public verification endpoints. */
   readonly anonymous?: boolean;
+  /** Extra request headers, e.g. `Idempotency-Key` and `If-Match` on mutations. */
+  readonly headers?: Record<string, string>;
 }
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
@@ -260,6 +262,8 @@ export class SmartApiClient {
 
     const correlationId = this.options.getCorrelationId?.();
     if (correlationId !== undefined) headers['x-correlation-id'] = correlationId;
+
+    if (options.headers) Object.assign(headers, options.headers);
 
     return headers;
   }

@@ -217,6 +217,13 @@ interface CandidateApplicationRow extends ApplicationRow {
     location: string | null;
     employmentType: string | null;
     domainCode: string | null;
+    /** Linked company tenant, when the opening was posted by a verified-onboarding company. */
+    company?: {
+      verificationStatus: string;
+      deactivatedAt: Date | null;
+      heldAt: Date | null;
+      verifications: { reviewedAt: Date | null }[];
+    } | null;
   };
 }
 
@@ -684,6 +691,19 @@ export class PlacementService {
             location: true,
             employmentType: true,
             domainCode: true,
+            company: {
+              select: {
+                verificationStatus: true,
+                deactivatedAt: true,
+                heldAt: true,
+                verifications: {
+                  where: { reviewedAt: { not: null } },
+                  orderBy: { reviewedAt: 'desc' },
+                  take: 1,
+                  select: { reviewedAt: true },
+                },
+              },
+            },
           },
         },
         student: {
@@ -1056,8 +1076,16 @@ export function toCandidateApplicationDto(row: CandidateApplicationRow): Candida
   const employmentType = EmploymentTypeSchema.safeParse(row.opening.employmentType);
   const domain = SkillTaxonomyDomainSchema.safeParse(row.opening.domainCode);
 
+  const company = row.opening.company;
+  const companyVerified =
+    company?.verificationStatus === 'APPROVED' && !company.deactivatedAt && !company.heldAt;
+
   return CandidateApplicationDtoSchema.parse({
     ...toApplicationDto(row),
+    companyVerified,
+    companyVerifiedAt: companyVerified
+      ? (company?.verifications[0]?.reviewedAt?.toISOString() ?? null)
+      : null,
     companyName: row.opening.companyName,
     roleTitle: row.opening.roleTitle,
     location: row.opening.location ?? '',

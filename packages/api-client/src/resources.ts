@@ -1,3 +1,16 @@
+import {
+  CompanyMemberSchema,
+  CompanyProfileSchema,
+  ListCompanyMembersResponseSchema,
+  CompanyReviewSchema,
+  ListCompanyReviewsResponseSchema,
+  type RespondToReviewRequest,
+  LocationSearchResponseSchema,
+  type DeactivateCompanyMemberRequest,
+  type InviteRecruiterRequest,
+  type UpdateCompanyMemberRoleRequest,
+  type UpdateCompanyProfileRequest,
+} from '@smart/contracts';
 import type {
   AddCertificateSkillsRequest,
   AuditLogSection,
@@ -1803,6 +1816,98 @@ export function evaluationApi(client: SmartApiClient) {
   };
 }
 
+/** EMP-02 — company profile and team. Mutations carry an Idempotency-Key so a retry never repeats. */
+function employerApi(client: SmartApiClient) {
+  const mutate = (key: string, extra: Record<string, string> = {}) => ({
+    headers: { 'idempotency-key': key, ...extra },
+  });
+  return {
+    getCompany: () => client.get(prefixed('/employer/company'), { schema: CompanyProfileSchema }),
+
+    updateCompany: (params: {
+      body: UpdateCompanyProfileRequest;
+      version: number;
+      idempotencyKey: string;
+    }) =>
+      client.patch(prefixed('/employer/company'), params.body, {
+        schema: CompanyProfileSchema,
+        ...mutate(params.idempotencyKey, { 'if-match': String(params.version) }),
+      }),
+
+    uploadLogo: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return client.postForm(prefixed('/employer/company/logo/upload'), formData, {
+        schema: z.object({ logoFileId: z.string(), previewUrl: z.string() }),
+      });
+    },
+
+    searchLocations: (q: string) =>
+      client.get(prefixed('/locations/search'), {
+        query: { q },
+        schema: LocationSearchResponseSchema,
+      }),
+
+    listReviews: () =>
+      client.get(prefixed('/employer/reviews'), { schema: ListCompanyReviewsResponseSchema }),
+
+    respondToReview: (reviewId: string, body: RespondToReviewRequest, idempotencyKey: string) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/employer/reviews/${reviewId}/response`),
+        body,
+        schema: CompanyReviewSchema,
+        ...mutate(idempotencyKey),
+      }),
+
+    listMembers: () =>
+      client.get(prefixed('/employer/members'), { schema: ListCompanyMembersResponseSchema }),
+
+    inviteRecruiter: (body: InviteRecruiterRequest, idempotencyKey: string) =>
+      client.post(prefixed('/employer/invitations'), body, {
+        schema: z.object({ invitationId: z.string(), email: z.string() }),
+        ...mutate(idempotencyKey),
+      }),
+
+    changeMemberRole: (
+      memberId: string,
+      body: UpdateCompanyMemberRoleRequest,
+      idempotencyKey: string,
+    ) =>
+      client.patch(prefixed(`/employer/members/${memberId}`), body, {
+        schema: CompanyMemberSchema,
+        ...mutate(idempotencyKey),
+      }),
+
+    deactivateMember: (
+      memberId: string,
+      body: DeactivateCompanyMemberRequest,
+      idempotencyKey: string,
+    ) =>
+      client.post(prefixed(`/employer/members/${memberId}/deactivate`), body, {
+        schema: CompanyMemberSchema,
+        ...mutate(idempotencyKey),
+      }),
+
+    reactivateMember: (memberId: string, idempotencyKey: string) =>
+      client.post(prefixed(`/employer/members/${memberId}/reactivate`), undefined, {
+        schema: CompanyMemberSchema,
+        ...mutate(idempotencyKey),
+      }),
+  };
+}
+
+/** Public company profile (verified companies only; anyone may read). */
+function companiesApi(client: SmartApiClient) {
+  return {
+    getPublic: (idOrSlug: string) =>
+      client.get(prefixed(`/companies/${encodeURIComponent(idOrSlug)}`), {
+        schema: CompanyProfileSchema,
+        anonymous: true,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -1820,6 +1925,8 @@ export function createSmartApi(client: SmartApiClient) {
     notifications: notificationsApi(client),
     public: publicApi(client),
     system: systemApi(client),
+    employer: employerApi(client),
+    companies: companiesApi(client),
   };
 }
 

@@ -170,6 +170,22 @@ enum TenantVerificationStatus {
   REJECTED
 }
 
+/// EMP-02 — what a COMPANY user may do inside their company tenant.
+enum CompanyMemberRole {
+  OWNER
+  RECRUITER
+}
+
+/// EMP-02 — employee-count bands on the public company profile.
+enum CompanyEmployeeCount {
+  E_1_10
+  E_11_50
+  E_51_200
+  E_201_500
+  E_501_1000
+  E_1000_PLUS
+}
+
 enum OrganizationType {
   UNIVERSITY
   EMPLOYER
@@ -323,28 +339,32 @@ model Batch {
 }
 
 model Invitation {
-  id            String           @id @default(uuid()) @db.Uuid
+  id            String             @id @default(uuid()) @db.Uuid
   email         String
-  fullName      String           @map("full_name")
+  fullName      String             @map("full_name")
   role          UserRole
   /// Null for platform-admin invites (SUPER_ADMIN), which have no owning tenant.
-  institutionId String?          @map("institution_id") @db.Uuid
-  institution   Institution?     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  batchId       String?          @map("batch_id") @db.Uuid
-  batch         Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  groupLabel    String?          @map("group_label")
-  userId        String           @map("user_id") @db.Uuid
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash     String           @unique @map("token_hash")
-  status        InvitationStatus @default(PENDING)
-  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(6)
-  acceptedAt    DateTime?        @map("accepted_at") @db.Timestamptz(6)
-  invitedById   String           @map("invited_by_id") @db.Uuid
-  invitedBy     User             @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
-  lastSentAt    DateTime?        @map("last_sent_at") @db.Timestamptz(6)
-  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  institutionId String?            @map("institution_id") @db.Uuid
+  institution   Institution?       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  batchId       String?            @map("batch_id") @db.Uuid
+  batch         Batch?             @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  /// EMP-02 — set for employer-side invitations (recruiters); null for university invites.
+  companyId     String?            @map("company_id") @db.Uuid
+  companyRole   CompanyMemberRole? @map("company_role")
+  groupLabel    String?            @map("group_label")
+  userId        String             @map("user_id") @db.Uuid
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash     String             @unique @map("token_hash")
+  status        InvitationStatus   @default(PENDING)
+  expiresAt     DateTime           @map("expires_at") @db.Timestamptz(6)
+  acceptedAt    DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  invitedById   String             @map("invited_by_id") @db.Uuid
+  invitedBy     User               @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
+  lastSentAt    DateTime?          @map("last_sent_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([institutionId, status])
+  @@index([companyId, status])
   @@index([batchId])
   @@index([userId])
   @@map("invitations")
@@ -439,7 +459,7 @@ model User {
   deactivatedAt          DateTime?       @map("deactivated_at") @db.Timestamptz(6)
   /// STU-03 — student opt-in: show the count of employer profile views on the dashboard.
   showEmployerViewCount  Boolean         @default(false) @map("show_employer_view_count")
-  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens                        RefreshToken[]
   emailVerificationTokens              EmailVerificationToken[]
@@ -452,6 +472,8 @@ model User {
   invitationsSent                      Invitation[]                  @relation("InvitationInvitedBy")
   companyId                            String?                       @map("company_id") @db.Uuid
   company                              Company?                      @relation(fields: [companyId], references: [id])
+  /// EMP-02 — role inside the company tenant; null for non-company users.
+  companyRole                          CompanyMemberRole?            @map("company_role")
   skillClaims                          SkillClaim[]
   projects                             Project[]
   applications                         Application[]
@@ -947,9 +969,90 @@ model Company {
   onboardingSessions    CompanyOnboardingSession[]
   verifications         CompanyVerification[]
   verificationDocuments CompanyVerificationDocument[]
+  profile               CompanyProfile?
+  reviews               CompanyReview[]
 
   @@index([organizationId])
   @@map("companies")
+}
+
+/// EMP-02 — editable public profile of a company. `version` is the optimistic lock (If-Match).
+/// Only companies whose verificationStatus is APPROVED are publicly readable.
+model CompanyProfile {
+  id                  String                @id @default(uuid()) @db.Uuid
+  companyId           String                @unique @map("company_id") @db.Uuid
+  company             Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  slug                String                @unique
+  displayName         String                @map("display_name")
+  logoFileId          String?               @map("logo_file_id")
+  website             String?
+  about               String?
+  benefits            String[]              @default([])
+  socialLinks         Json                  @default("{}") @map("social_links")
+  industry            String?
+  employeeCount       CompanyEmployeeCount? @map("employee_count")
+  headquarters        String?
+  additionalLocations String[]              @default([]) @map("additional_locations")
+  version             Int                   @default(1)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_profiles")
+}
+
+/// Th6-355 — a review of a company left by a student/intern. Submission is a separate (student-side) ticket;
+/// this ticket only lets the company respond, and only where `responsePermitted` is true.
+model CompanyReview {
+  id                String              @id @default(uuid()) @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Display label only (e.g. "Verified intern"); the reviewer's identity is not exposed to the company.
+  authorLabel       String              @map("author_label")
+  rating            Int
+  body              String              @db.Text
+  status            CompanyReviewStatus @default(PUBLISHED)
+  responsePermitted Boolean             @default(false) @map("response_permitted")
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  response          ReviewResponse?
+
+  @@index([companyId, createdAt])
+  @@map("company_reviews")
+}
+
+enum CompanyReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+/// Th6-355 — the company's single, editable reply to a review (max 1000 chars, enforced in the DTO).
+model ReviewResponse {
+  id        String        @id @default(uuid()) @db.Uuid
+  reviewId  String        @unique @map("review_id") @db.Uuid
+  review    CompanyReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  companyId String        @map("company_id") @db.Uuid
+  authorId  String        @map("author_id") @db.Uuid
+  body      String        @db.Text
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([companyId])
+  @@map("review_responses")
+}
+
+/// EMP-02 — Idempotency-Key ledger for employer mutations: a retry with the same key replays the
+/// stored response instead of repeating the write.
+model IdempotencyRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  scope        String
+  key          String
+  requestHash  String   @map("request_hash")
+  responseBody Json?    @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, scope, key])
+  @@index([createdAt])
+  @@map("idempotency_records")
 }
 
 /// Public company self-onboarding session. Raw session tokens are never stored — only sessionTokenHash.

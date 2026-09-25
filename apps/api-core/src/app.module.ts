@@ -16,6 +16,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CalibrationModule } from './modules/calibration/calibration.module.js';
 import { CandidateCertificatesModule } from './modules/candidate-certificates/candidate-certificates.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { CompanyProfileModule } from './modules/company-profile/company-profile.module.js';
 import { CertificateModule } from './modules/certificate/certificate.module.js';
 import { CorroborationModule } from './modules/corroboration/corroboration.module.js';
 import { EvidenceModule } from './modules/evidence/evidence.module.js';
@@ -74,6 +75,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     UsersModule,
     UsernameModule,
     AccountModule,
+    CompanyProfileModule,
     DashboardModule,
     ReadinessModule,
     WorkExperienceModule,

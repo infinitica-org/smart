@@ -76,6 +76,33 @@ describe('MyApplicationsTracker', () => {
     expect(listMyApplications).toHaveBeenCalledWith();
   });
 
+  it('shows the verified badge only when the server marks the company verified (Th6-354)', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [
+        application({ companyVerified: true, companyVerifiedAt: '2026-09-01T10:00:00.000Z' }),
+      ],
+    });
+    renderTracker();
+    await waitFor(() => expect(screen.getAllByTestId('verified-badge').length).toBeGreaterThan(0));
+    expect(screen.getAllByTestId('verified-badge')[0]?.getAttribute('aria-label')).toBe(
+      'SMART verified this company on 1 Sep 2026',
+    );
+  });
+
+  it('hides the verified badge for an unverified or unknown company (Th6-354)', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [
+        application({ companyVerified: false }),
+        application({
+          applicationId: '00000000-0000-4000-8000-000000000002',
+        }),
+      ],
+    });
+    renderTracker();
+    await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
+    expect(screen.queryAllByTestId('verified-badge')).toHaveLength(0);
+  });
+
   it('highlights pipeline stages up to the current CO-T02 column', async () => {
     listMyApplications.mockResolvedValue({
       applications: [application({ stage: 'INTERVIEW' })],
