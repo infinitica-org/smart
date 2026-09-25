@@ -84,6 +84,11 @@ const EnvSchema = z.object({
    * default encryption. Only switch it on after MinIO has a KMS key (docs/delivery/STORAGE_ENCRYPTION.md).
    */
   S3_ENCRYPTION: z.enum(['off', 'required']).default('off'),
+  /** S6-VV-120 — `required` scans every upload with clamd and refuses it if clamd is unreachable. */
+  FILE_SCAN: z.enum(['off', 'required']).default('off'),
+  CLAMD_HOST: z.string().default('clamav'),
+  CLAMD_PORT: z.coerce.number().int().positive().default(3310),
+  CLAMD_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   /**
    * CN-T01 GitHub identity/repo-picker proxy. Unauthenticated GitHub REST calls

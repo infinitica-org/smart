@@ -13,6 +13,7 @@ import {
 import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env.js';
+import { assertFileClean } from './file-scanner.js';
 
 const SIGNED_URL_TTL_SECONDS = 15 * 60;
 
@@ -104,6 +105,8 @@ export class StorageService implements OnModuleInit {
     fileName: string;
     contentType: string;
   }): Promise<string> {
+    // S6-VV-120 — an infected file never reaches the bucket.
+    await assertFileClean(params.buffer, params.fileName);
     const objectKey = `${params.namespace}/${randomUUID()}-${sanitizeFileName(params.fileName)}`;
     await this.client.send(
       new PutObjectCommand({

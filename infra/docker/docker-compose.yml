@@ -16,6 +16,9 @@ x-app-env: &app-env
   S3_BUCKET: smart
   # S6-VV-119: `required` only after MinIO has a KMS key and the bucket encrypts by default.
   S3_ENCRYPTION: ${S3_ENCRYPTION:-off}
+  # S6-VV-120: `required` once the clamav service (profile `scan`) runs next to the API.
+  FILE_SCAN: ${FILE_SCAN:-off}
+  CLAMD_HOST: clamav
   LOG_PRETTY: "false"
   LOG_LEVEL: ${LOG_LEVEL:-info}
   SMTP_HOST: mailpit
@@ -199,6 +202,21 @@ services:
       mc mb --ignore-existing local/smart &&
       if [ \"$$KMS_ENABLED\" = true ]; then mc encrypt set sse-s3 local/smart; fi
       "
+
+  # S6-VV-120: malware scanning for uploads (FILE_SCAN=required). Needs ~1.2 GB RAM, so it only
+  # starts with `--profile scan`. freshclam keeps signatures current in the volume.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    profiles: ["scan"]
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   mailpit:
     image: axllent/mailpit:v1.27
@@ -709,6 +727,7 @@ services:
     profiles: ["obs"]
 
 volumes:
+  clamav_data:
   postgres_data:
   redis_data:
   redpanda_data:

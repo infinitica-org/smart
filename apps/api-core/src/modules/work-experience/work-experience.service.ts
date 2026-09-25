@@ -64,6 +64,7 @@ import {
   deriveWorkExperienceNextAction,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { assertDataUriClean } from '../../platform/storage/file-scanner.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { OrganizationsService } from '../institutions/organizations.service.js';
@@ -845,6 +846,7 @@ export class WorkExperienceService {
     }
 
     this.assertProofFileUrlOrThrow(parsed.data.fileUrl);
+    await assertDataUriClean(parsed.data.fileUrl, parsed.data.fileName);
 
     const doc = await this.prisma.workExperienceDocument.create({
       data: {
