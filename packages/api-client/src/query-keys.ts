@@ -13,6 +13,14 @@
  */
 
 export const queryKeys = {
+  /* ------------------------ UNI-05 campus access and events ------------------------ */
+  campusAccess: () => ['campus', 'access'] as const,
+  campusRequests: (params?: unknown) => ['campus', 'requests', params] as const,
+  campusEmployers: (params?: unknown) => ['campus', 'employers', params] as const,
+  universityEvents: (params?: unknown) => ['campus', 'university-events', params] as const,
+  universityEvent: (eventId: string) => ['campus', 'university-event', eventId] as const,
+  events: (params?: unknown) => ['campus', 'events', params] as const,
+  event: (eventId: string) => ['campus', 'event', eventId] as const,
   /* ------------------------------- identity ------------------------------- */
   me: () => ['me'] as const,
   onboarding: () => ['me', 'onboarding'] as const,

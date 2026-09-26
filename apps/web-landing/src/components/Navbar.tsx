@@ -18,9 +18,10 @@ export default function Navbar() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const navLinks: NavLink[] = [
-    { name: 'Employers', href: '#employers' },
-    { name: 'Job seekers', href: '#job-seekers' },
-    { name: 'Universities', href: '#universities' },
+    { name: 'Career center', href: '/career-center' },
+    { name: 'Employers', href: '/#employers' },
+    { name: 'Job seekers', href: '/#job-seekers' },
+    { name: 'Universities', href: '/#universities' },
     { name: 'Verified profiles', href: verifyHomeUrl(), external: true },
   ];
 

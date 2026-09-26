@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   COMPANY_VISIBLE_WHERE,
   acceptingOpeningWhere,
+  campusApprovedWhere,
+  companyVisibleWhere,
   isAcceptingApplications,
   isCompanyVerified,
   isJobAllowedForStudent,
@@ -16,7 +18,18 @@ describe('job eligibility (shared by Jobs page and dashboard top matches)', () =
     const where = acceptingOpeningWhere('inst-1', today);
     expect(where).toMatchObject({ institutionId: 'inst-1', status: 'OPEN' });
     expect(JSON.stringify(where)).toContain('"gte":"2026-09-25');
-    expect(where.AND).toContainEqual(COMPANY_VISIBLE_WHERE);
+    expect(where.AND).toContainEqual(companyVisibleWhere('inst-1'));
+  });
+
+  it('requires an ACTIVE campus access row for the job institution (Th6-446), keeping own jobs visible', () => {
+    const where = campusApprovedWhere('inst-1');
+    expect(where.OR).toContainEqual({ companyId: null });
+    expect(where.OR).toContainEqual({
+      company: { campusAccess: { some: { institutionId: 'inst-1', status: 'ACTIVE' } } },
+    });
+    expect(JSON.stringify(companyVisibleWhere('inst-1'))).toContain('"status":"ACTIVE"');
+    // Another campus is a different filter, so approval at one campus never leaks to another.
+    expect(JSON.stringify(campusApprovedWhere('inst-2'))).not.toContain('inst-1');
   });
 
   it('shows a company-less university job but requires an approved active company otherwise', () => {

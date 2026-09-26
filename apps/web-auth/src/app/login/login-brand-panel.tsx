@@ -1,5 +1,8 @@
 'use client';
 
+import Image from 'next/image';
+import loginImg from '@smart/ui/assets/images/Logos/WebP/login-img.png';
+
 export function LoginBrandPanel() {
   return (
     <section
@@ -7,15 +10,17 @@ export function LoginBrandPanel() {
       style={{ background: 'var(--background)' }}
       aria-label="About SMART"
     >
-      {/* Replace with a local file in public/ if you prefer to self-host the photo. */}
-      <img
-        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80"
+      <Image
+        src={loginImg}
         alt="SMART candidate"
-        className="absolute inset-0 h-full w-full object-cover"
+        fill
+        priority
+        sizes="(max-width: 1024px) 100vw, 50vw"
+        className="object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/80" />
 
-      <h1 className="font-heading relative z-10 text-[4.25rem]  font-extrabold uppercase leading-[0.92] tracking-tight xl:text-[5.25rem]">
+      <h1 className="font-heading relative z-10  text-[4.25rem] font-extrabold uppercase leading-[0.92] tracking-tight text-white xl:text-[5.25rem]">
         Get
         <br />
         Ready
@@ -25,3 +30,5 @@ export function LoginBrandPanel() {
     </section>
   );
 }
+
+// mt-auto

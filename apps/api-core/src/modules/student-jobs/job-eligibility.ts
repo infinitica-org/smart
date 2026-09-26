@@ -17,6 +17,25 @@ export const COMPANY_VISIBLE_WHERE: Prisma.JobOpeningWhereInput = {
   ],
 };
 
+/**
+ * UNI-05 (Th6-446) — an employer's job reaches a campus only while that campus holds an ACTIVE
+ * UniversityEmployerAccess for the employer. Jobs with no company are the institution's own and stay visible.
+ * Revoking access hides the jobs; existing applications are never touched.
+ */
+export function campusApprovedWhere(institutionId: string): Prisma.JobOpeningWhereInput {
+  return {
+    OR: [
+      { companyId: null },
+      { company: { campusAccess: { some: { institutionId, status: 'ACTIVE' } } } },
+    ],
+  };
+}
+
+/** Healthy, verified company AND approved at this campus (see campusApprovedWhere). */
+export function companyVisibleWhere(institutionId: string): Prisma.JobOpeningWhereInput {
+  return { AND: [COMPANY_VISIBLE_WHERE, campusApprovedWhere(institutionId)] };
+}
+
 /** Open, published, not past its deadline, at the student's institution, and from a visible company. */
 export function acceptingOpeningWhere(
   institutionId: string,
@@ -27,7 +46,7 @@ export function acceptingOpeningWhere(
     status: 'OPEN',
     AND: [
       { OR: [{ lastDateToApply: null }, { lastDateToApply: { gte: today } }] },
-      COMPANY_VISIBLE_WHERE,
+      companyVisibleWhere(institutionId),
     ],
   };
 }
@@ -67,14 +86,14 @@ export function passesStudentEligibility(
 }
 
 /**
- * University–employer access (Th6-446 / Th6-367). No such table exists yet, so every job at the
- * student's own institution is allowed. When the access model lands, this is the only function to change.
+ * Per-job hook that runs after the query. The campus-access rule (Th6-446) is enforced in the query
+ * itself (campusApprovedWhere), so it holds for lists, counts and single lookups alike.
+ * TODO(Th6-367, Vedika): employer-side job approval / eligibility rules plug in here. Not built by UNI-05.
  */
 export function isJobAllowedForStudent(
   _student: { id: string; institutionId: string },
   _job: { id: string; institutionId: string; companyId: string | null },
 ): boolean {
-  // TODO(Th6-446/Th6-367): consult the university–employer access list.
   return true;
 }
 

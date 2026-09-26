@@ -280,7 +280,6 @@ async function main(): Promise<void> {
 
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
   const devPasswordHash = await hashPassword(seedPassword);
-  const companyPasswordHash = await hashPassword('Password123!');
 
   const accounts: Array<{
     email: string;
@@ -325,7 +324,7 @@ async function main(): Promise<void> {
       institutionId: null,
       companyId: company.id,
       primaryTrackId: null,
-      passwordHash: companyPasswordHash,
+      passwordHash: devPasswordHash,
     },
   ];
 
@@ -340,6 +339,8 @@ async function main(): Promise<void> {
         companyId: account.companyId,
         institutionId: account.institutionId,
         emailVerified: true,
+        failedLoginAttempts: 0,
+        loginLockedUntil: null,
       },
       create: {
         email: account.email,

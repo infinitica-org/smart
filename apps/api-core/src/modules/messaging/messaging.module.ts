@@ -23,6 +23,6 @@ import { ModerationRetentionService } from './moderation-retention.service.js';
     ModerationPurgeProcessor,
     IdempotencyService,
   ],
-  exports: [MessageReportsService, ContactRulesService],
+  exports: [MessageReportsService, ContactRulesService, MessagingService],
 })
 export class MessagingModule {}

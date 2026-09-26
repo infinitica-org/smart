@@ -15,6 +15,8 @@ import {
   UserPlus,
   Briefcase,
   BarChart3,
+  Handshake,
+  CalendarDays,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -30,6 +32,8 @@ const mainNav: NavItem[] = [
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Whitelist', href: '/whitelist', icon: UserPlus },
   { name: 'Employers', href: '/companies', icon: Briefcase },
+  { name: 'Campus access', href: '/campus', icon: Handshake },
+  { name: 'Events', href: '/events', icon: CalendarDays },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
 ];
 

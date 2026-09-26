@@ -14,6 +14,8 @@ export interface MessagingUser {
   readonly institutionId: string | null;
   readonly companyId: string | null;
   readonly deactivatedAt: Date | null;
+  /** Campus label; an advisor with one is limited to students of that campus. */
+  readonly groupLabel?: string | null;
 }
 
 const USER_SELECT = {
@@ -22,6 +24,7 @@ const USER_SELECT = {
   institutionId: true,
   companyId: true,
   deactivatedAt: true,
+  groupLabel: true,
 } as const;
 
 export const BLOCKED_MESSAGE = "You can't message this user.";
@@ -100,7 +103,9 @@ export class ContactRulesService {
 
   /** Th6-423 — an advisor may contact students of their own institution only. */
   advisorInScope(advisor: MessagingUser, student: MessagingUser): boolean {
-    return advisor.institutionId !== null && advisor.institutionId === student.institutionId;
+    if (advisor.institutionId === null || advisor.institutionId !== student.institutionId)
+      return false;
+    return !advisor.groupLabel || advisor.groupLabel === student.groupLabel;
   }
 
   private async startsInLastHour(userId: string): Promise<number> {

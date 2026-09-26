@@ -18,7 +18,7 @@ export function ProfileTopNav({ activeSection, onSelect, className }: ProfileTop
       data-testid="profile-top-nav"
       className={`min-w-0 max-w-full font-sans select-none ${className ?? ''}`}
     >
-      <div className="flex items-center gap-1 overflow-x-auto rounded-md border border-zinc-200/80 bg-zinc-100/75 p-1 dark:border-zinc-800 dark:bg-zinc-900/80 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-md border border-zinc-200/90 bg-white p-1.5 shadow-2xs dark:border-zinc-800 dark:bg-[#161616] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => {
           const active = item.id === activeSection;
           const Icon = item.icon;
@@ -32,16 +32,16 @@ export function ProfileTopNav({ activeSection, onSelect, className }: ProfileTop
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
               data-active={active ? 'true' : undefined}
-              className={`relative z-10 flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors duration-150 ${
+              className={`relative z-10 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 text-xs sm:text-sm font-medium transition-colors duration-150 ${
                 active
-                  ? 'font-bold text-zinc-950 dark:text-white'
-                  : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  ? 'font-bold text-white dark:text-zinc-950'
+                  : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
               {active && (
                 <motion.span
                   layoutId="active-profile-tab"
-                  className="absolute inset-0 -z-10 rounded-md border border-zinc-200/80 bg-white shadow-2xs dark:border-zinc-700/80 dark:bg-zinc-800"
+                  className="absolute inset-0 -z-10 rounded-md bg-zinc-950 shadow-xs dark:bg-white"
                   transition={{ type: 'spring', stiffness: 500, damping: 38 }}
                 />
               )}

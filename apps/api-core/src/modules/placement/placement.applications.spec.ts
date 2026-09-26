@@ -114,6 +114,7 @@ describe('CO-T02 list applications', () => {
     const response = await controller.listApplications(
       openingId,
       resolveTenantId(tpoAdmin as never),
+      tpoAdmin as never,
     );
 
     expect(prisma.jobOpening.findFirst).toHaveBeenCalledWith({
@@ -153,6 +154,7 @@ describe('CO-T02 list applications', () => {
       controller.listApplications(
         openingId,
         resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+        { ...tpoAdmin, inst: otherInstitutionId } as never,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -169,6 +171,7 @@ describe('CO-T02 patch application stage', () => {
         stage: 'SHORTLISTED',
       },
       resolveTenantId(tpoAdmin as never),
+      tpoAdmin as never,
     );
 
     expect(result.stage).toBe('SHORTLISTED');
@@ -217,6 +220,7 @@ describe('CO-T02 patch application stage', () => {
         stage: 'APPLIED',
       },
       resolveTenantId(tpoAdmin as never),
+      tpoAdmin as never,
     );
 
     expect(result.stage).toBe('APPLIED');
@@ -238,6 +242,7 @@ describe('CO-T02 patch application stage', () => {
           stage: 'SHORTLISTED',
         },
         resolveTenantId(tpoAdmin as never),
+        tpoAdmin as never,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -253,6 +258,7 @@ describe('CO-T02 patch application stage', () => {
           stage: 'INVALID_STAGE',
         },
         resolveTenantId(tpoAdmin as never),
+        tpoAdmin as never,
       ),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.application.update).not.toHaveBeenCalled();
@@ -270,6 +276,7 @@ describe('CO-T02 patch application stage', () => {
             stage: 'SHORTLISTED',
           },
           resolveTenantId({ ...tpoAdmin, inst: null } as never),
+          { ...tpoAdmin, inst: null } as never,
         ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });

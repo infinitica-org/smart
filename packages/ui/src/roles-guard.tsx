@@ -15,7 +15,7 @@ import {
 } from '@smart/api-client';
 import type { UserRole } from '@smart/contracts';
 import { ForbiddenWall } from './components/status-walls';
-import { SmartLogo } from './components/smart-logo';
+import { BrandLoadingScreen } from './components/brand-loading-screen';
 
 export type RolesGuardProps = {
   allowedRoles: readonly UserRole[];
@@ -133,26 +133,7 @@ export function RolesGuard({
   }, [allowedRoles, authAppUrl, apiBaseUrl, publicPathPrefixes, pathname]);
 
   if (gate === 'checking') {
-    return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[var(--background)]"
-        role="status"
-        aria-live="polite"
-      >
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <span
-            className="brand-gradient absolute inset-0 rounded-full opacity-30 blur-2xl"
-            aria-hidden="true"
-          />
-          <span
-            className="absolute inset-0 animate-ping rounded-full bg-[var(--brand-teal)]/15"
-            aria-hidden="true"
-          />
-          <SmartLogo kind="text" className="relative h-6 w-auto animate-pulse" />
-        </div>
-        <SessionCheckMessage />
-      </div>
-    );
+    return <BrandLoadingScreen message={<SessionCheckMessage />} />;
   }
 
   if (gate === 'forbidden') {

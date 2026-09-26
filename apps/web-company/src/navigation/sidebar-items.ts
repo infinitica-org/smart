@@ -2,6 +2,8 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Briefcase,
   Building2,
+  CalendarDays,
+  GraduationCap,
   LayoutDashboard,
   MessageSquare,
   UserCheck,
@@ -22,5 +24,7 @@ export const companyNavItems: CompanyNavItem[] = [
   { title: 'Applicants', url: '/applicants', icon: UserCheck },
   { title: 'Search students', url: '/students', icon: Users },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
+  { title: 'Campus access', url: '/campus-access', icon: GraduationCap },
+  { title: 'University events', url: '/events', icon: CalendarDays },
   { title: 'Company profile', url: '/company', icon: Building2 },
 ];
