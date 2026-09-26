@@ -1,4 +1,5 @@
-import { Card, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 
 export default function CompanySettingsPage() {
   return (
@@ -12,6 +13,14 @@ export default function CompanySettingsPage() {
             release.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Link
+            href="/settings/blocked"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Blocked users
+          </Link>
+        </CardContent>
       </Card>
     </div>
   );
