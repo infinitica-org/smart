@@ -2612,6 +2612,17 @@ function messagingApi(client: SmartApiClient) {
   };
 }
 
+/** Th6-421 — super-admin views over the application pipeline. */
+function adminApplicationsApi(client: SmartApiClient) {
+  return {
+    conversion: (query: ConversionMetricsQuery = {}) =>
+      client.get(prefixed('/admin/applications/conversion'), {
+        query: { from: query.from, to: query.to },
+        schema: ConversionMetricsSchema,
+      }),
+  };
+}
+
 /** UNI-05 — employer campus access and career events (Th6-445 to Th6-451). */
 function campusApi(client: SmartApiClient) {
   const key = (idempotencyKey: string) => ({ headers: { 'idempotency-key': idempotencyKey } });
@@ -2740,6 +2751,7 @@ export function createSmartApi(client: SmartApiClient) {
     studentApplications: studentApplicationsApi(client),
     messaging: messagingApi(client),
     campus: campusApi(client),
+    adminApplications: adminApplicationsApi(client),
   };
 }
 
