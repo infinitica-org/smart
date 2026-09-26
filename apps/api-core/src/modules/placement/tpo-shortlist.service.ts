@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
   ExportTpoShortlistQuery,
   ListTpoShortlistQuery,
   ShortlistDto,
 } from '@smart/contracts';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
+
 interface StudentMock {
   name?: string;
   fullName?: string;
@@ -14,7 +16,7 @@ interface StudentMock {
 
 @Injectable()
 export class TpoShortlistService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getShortlist(institutionId: string, query: ListTpoShortlistQuery): Promise<ShortlistDto> {
     const openingId = query.openingId || query.driveId || randomUUID();
