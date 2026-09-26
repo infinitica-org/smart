@@ -1,7 +1,8 @@
 export const SANDBOX_EXECUTION_QUEUE = 'sandbox_execution' as const;
 export const AUDIO_EVALUATION_QUEUE = 'audio_evaluation' as const;
 export const PDF_GENERATION_QUEUE = 'pdf_generation' as const;
-export const AUDIT_LOG_PURGE_QUEUE = 'audit_log_purge' as const;
+/** S6-VV-118 — replaces the old `audit_log_purge` queue. */
+export const RETENTION_SWEEP_QUEUE = 'retention_sweep' as const;
 export const MESSAGE_MODERATION_PURGE_QUEUE = 'message_moderation_purge' as const;
 export const CREDENTIAL_VERIFICATION_QUEUE = 'credential_verification' as const;
 export const QLIX_POLL_QUEUE = 'qlix_poll' as const;
@@ -30,10 +31,9 @@ export const DSR_ERASURE_DLQ = 'dsr_erasure.dlq' as const;
 export const QLIX_RECALIBRATION_JOB_ID = 'qlix-recalibration-monthly' as const;
 export const QLIX_RECALIBRATION_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Rolling retention window for `audit_logs` — rows older than this are hard-deleted daily. */
-export const AUDIT_LOG_RETENTION_DAYS = 20;
-export const AUDIT_LOG_PURGE_JOB_ID = 'audit-log-purge-daily' as const;
-export const AUDIT_LOG_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/** S6-VV-118 — windows live in platform/retention/retention-sweep.service.ts (RETENTION_POLICIES). */
+export const RETENTION_SWEEP_JOB_ID = 'retention-sweep-daily' as const;
+export const RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export const EVIDENCE_EXPIRATION_QUEUE = 'evidence_expiration' as const;
 export const EVIDENCE_EXPIRATION_JOB_ID = 'evidence-expiration-daily' as const;
