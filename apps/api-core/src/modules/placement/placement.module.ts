@@ -9,11 +9,28 @@ import { PlacementCalendarService } from './placement-calendar.service.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
+import { TpoShortlistController } from './tpo-shortlist.controller.js';
+import { TpoShortlistService } from './tpo-shortlist.service.js';
 
 @Module({
   imports: [StorageModule, MatchingModule, EvidenceModule, ApplicationsModule],
-  controllers: [PlacementController, MeApplicationsController, PlacementCalendarController],
-  providers: [PlacementService, PlacementEmployersService, PlacementCalendarService],
-  exports: [PlacementService, PlacementEmployersService, PlacementCalendarService],
+  controllers: [
+    PlacementController,
+    MeApplicationsController,
+    PlacementCalendarController,
+    TpoShortlistController,
+  ],
+  providers: [
+    PlacementService,
+    PlacementEmployersService,
+    PlacementCalendarService,
+    TpoShortlistService,
+  ],
+  exports: [
+    PlacementService,
+    PlacementEmployersService,
+    PlacementCalendarService,
+    TpoShortlistService,
+  ],
 })
 export class PlacementModule {}
