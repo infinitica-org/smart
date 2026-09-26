@@ -94,12 +94,12 @@ export function StudentSidebar({ mobileOpen, onMobileOpenChange }: StudentSideba
             aria-label="SMART home"
           >
             <Image
-              src={textLogo}
-              alt="SMART"
-              width={110}
-              height={30}
+              src={smartLogoImg}
+              alt="SMART logo"
+              width={32}
+              height={32}
               priority
-              className="h-7 w-auto object-contain"
+              className="h-8 w-8 shrink-0 object-contain"
             />
           </Link>
         </div>

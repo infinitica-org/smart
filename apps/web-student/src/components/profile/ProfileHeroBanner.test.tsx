@@ -40,7 +40,7 @@ describe('ProfileHeroBanner', () => {
     expect(screen.getByText(/GitHub/i)).toBeTruthy();
     expect(screen.queryByText('Career focus')).toBeNull();
     expect(screen.queryByText('Job preferences')).toBeNull();
-    expect(screen.getByText(/Profile Readiness/i)).toBeTruthy();
+    expect(screen.getByText(/Share/i)).toBeTruthy();
   });
 
   it('shows department placeholder only when education exists without field of study', () => {

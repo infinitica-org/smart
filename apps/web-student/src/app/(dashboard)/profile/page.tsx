@@ -8,7 +8,6 @@ import { EducationSection } from '@/components/profile/EducationSection';
 import { LanguagesSection } from '@/components/profile/LanguagesSection';
 import { ProfessionalLinksSection } from '@/components/profile/ProfessionalLinksSection';
 import { ProfileHeroBanner } from '@/components/profile/ProfileHeroBanner';
-import { ProfilePublicLinkCard } from '@/components/profile/ProfilePublicLinkCard';
 import { ProfileTopNav } from '@/components/profile/ProfileTopNav';
 import { ProfileSurface } from '@/components/profile/ProfileSurface';
 import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
@@ -58,7 +57,7 @@ function ProfileWorkspace() {
   const sectionContent = renderSection(section);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 pb-12 pt-2 font-sans select-none">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-2 sm:px-4 md:px-6 py-6 pb-16 font-sans select-none">
       {/* SaaS Profile Identity & Readiness Hero Banner */}
       <ProfileHeroBanner
         user={user}
@@ -70,8 +69,6 @@ function ProfileWorkspace() {
         areaStatus={progress?.areaStatus}
         loading={loading}
       />
-
-      <ProfilePublicLinkCard />
 
       {visibleRecommendedAction && (
         <div className="max-w-3xl">

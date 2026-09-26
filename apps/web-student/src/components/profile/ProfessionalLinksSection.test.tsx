@@ -31,12 +31,12 @@ describe('ProfessionalLinksSection', () => {
     } as never);
   });
 
-  it('renders premium section header and save action', () => {
+  it('renders showcase work cards and platforms', () => {
     render(<ProfessionalLinksSection />);
 
     expect(screen.getByRole('heading', { name: 'Professional Links' })).toBeTruthy();
-    expect(screen.getByText(/Verify when you can/i)).toBeTruthy();
-    expect(screen.getByTestId('social-verification')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Save links' })).toBeTruthy();
+    expect(screen.getByText('Showcase your work from:')).toBeTruthy();
+    expect(screen.getByText('GitHub')).toBeTruthy();
+    expect(screen.getByText('LinkedIn')).toBeTruthy();
   });
 });
