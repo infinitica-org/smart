@@ -54,29 +54,48 @@ async function main(): Promise<void> {
     adapter: new PrismaPg({ connectionString: DATABASE_URL }),
   });
 
-  const PLAN_CANDIDATE_CAPACITY: Record<'FREE' | 'BASIC' | 'PRO', number | null> = {
+  const PLAN_CANDIDATE_CAPACITY: Record<'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE', number | null> = {
     FREE: 100,
     BASIC: 500,
     PRO: null,
+    ENTERPRISE: null,
+  };
+  const PLAN_PRICE_INR: Record<'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE', number | null> = {
+    FREE: 0,
+    BASIC: 7500,
+    PRO: 20000,
+    ENTERPRISE: null, // custom / negotiated — no public rate card
   };
   const plans = await Promise.all(
     (
       [
-        ['FREE', 'Free'],
-        ['BASIC', 'Basic'],
-        ['PRO', 'Pro'],
+        ['FREE', 'Get Started'],
+        ['BASIC', 'Find & Engage'],
+        ['PRO', 'Build Talent Pipelines'],
+        ['ENTERPRISE', 'Talent Intelligence Suite'],
       ] as const
     ).map(([code, name]) =>
       prisma.subscriptionPlan.upsert({
         where: { code },
-        update: { name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
-        create: { code, name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
+        update: {
+          name,
+          candidateCapacity: PLAN_CANDIDATE_CAPACITY[code],
+          priceInr: PLAN_PRICE_INR[code],
+          isCustomPrice: code === 'ENTERPRISE',
+        },
+        create: {
+          code,
+          name,
+          candidateCapacity: PLAN_CANDIDATE_CAPACITY[code],
+          priceInr: PLAN_PRICE_INR[code],
+          isCustomPrice: code === 'ENTERPRISE',
+        },
       }),
     ),
   );
   const proPlan = plans.find((plan) => plan.code === 'PRO')!;
 
-  // Legacy flags: enabled for every non-FREE plan.
+  // Legacy flags: enabled for every non-FREE plan (BASIC, PRO, ENTERPRISE).
   const legacyFlagKeys = [
     ['ats_kanban', 'ATS Kanban'],
     ['public_profile', 'Public verified profile'],
@@ -98,30 +117,31 @@ async function main(): Promise<void> {
   }
 
   // Tier-specific flags, each with an explicit per-plan-code entitlement set.
+  // ENTERPRISE inherits all PRO flags as a minimum; SA can override per-tenant.
   const tieredFlags: Array<{
     key: string;
     name: string;
-    enabledFor: ReadonlySet<'FREE' | 'BASIC' | 'PRO'>;
+    enabledFor: ReadonlySet<'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE'>;
   }> = [
     {
       key: 'bulk_batch_import',
       name: 'Bulk spreadsheet batch import',
-      enabledFor: new Set(['BASIC', 'PRO']),
+      enabledFor: new Set(['BASIC', 'PRO', 'ENTERPRISE']),
     },
     {
       key: 'skill_verification',
       name: 'Skill verification',
-      enabledFor: new Set(['BASIC', 'PRO']),
+      enabledFor: new Set(['BASIC', 'PRO', 'ENTERPRISE']),
     },
     {
       key: 'webhooks_outbound',
       name: 'Outbound webhooks',
-      enabledFor: new Set(['PRO']),
+      enabledFor: new Set(['PRO', 'ENTERPRISE']),
     },
     {
       key: 'proctoring_advanced',
       name: 'Advanced proctoring',
-      enabledFor: new Set(['PRO']),
+      enabledFor: new Set(['PRO', 'ENTERPRISE']),
     },
   ];
   for (const { key, name, enabledFor } of tieredFlags) {

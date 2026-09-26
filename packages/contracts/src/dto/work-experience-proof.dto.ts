@@ -37,7 +37,12 @@ export const WorkExperienceProofReasonCodeSchema = z.enum(WORK_EXPERIENCE_PROOF_
 export type WorkExperienceProofReasonCode = z.infer<typeof WorkExperienceProofReasonCodeSchema>;
 
 /** Attachment or AI-classified types that cannot establish completed employment. */
-export const INVALID_EMPLOYMENT_PROOF_ATTACHMENT_TYPES = ['OFFER_LETTER'] as const;
+export const INVALID_EMPLOYMENT_PROOF_ATTACHMENT_TYPES = [
+  'OFFER_LETTER',
+  'JOINING_LETTER',
+  'APPOINTMENT_LETTER',
+  'INTERNSHIP_OFFER',
+] as const;
 
 export function isInvalidEmploymentProofAttachmentType(documentType: string): boolean {
   return (INVALID_EMPLOYMENT_PROOF_ATTACHMENT_TYPES as readonly string[]).includes(documentType);

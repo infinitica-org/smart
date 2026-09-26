@@ -13,10 +13,18 @@ import {
   Award,
   Bookmark,
   ExternalLink,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Modal, PageHeader } from '../../../components/ui';
-import { companyJobsApi, companyStudentsApi, formatApiError } from '../../../lib/api';
+import {
+  companyJobsApi,
+  companyStudentsApi,
+  companySavedCandidatesApi,
+  companyFeedbackApi,
+  formatApiError,
+} from '../../../lib/api';
 import type { CandidateMatchDto, JobOpeningDto } from '@smart/contracts';
 import {
   card,
@@ -68,30 +76,46 @@ export default function SearchStudentsPage() {
   const [scopedJobId, setScopedJobId] = useState<string>('ALL');
 
   // Bookmarked / Saved Candidates (I401)
-  const [savedCandidates, setSavedCandidates] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return JSON.parse(localStorage.getItem('smart_saved_candidates') || '[]');
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  const [savedCandidates, setSavedCandidates] = useState<string[]>([]);
+  // Employer Match Feedback (I378)
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, 'RELEVANT' | 'NOT_RELEVANT'>>({});
 
   // Active Tooltip for "Why this level?"
   const [activeWhyId, setActiveWhyId] = useState<string | null>(null);
 
-  function toggleSaveCandidate(studentId: string) {
-    setSavedCandidates((prev) => {
-      const next = prev.includes(studentId)
-        ? prev.filter((id) => id !== studentId)
-        : [...prev, studentId];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('smart_saved_candidates', JSON.stringify(next));
+  async function toggleSaveCandidate(studentId: string) {
+    const isSaved = savedCandidates.includes(studentId);
+    setSavedCandidates((prev) =>
+      isSaved ? prev.filter((id) => id !== studentId) : [...prev, studentId],
+    );
+    try {
+      if (isSaved) {
+        await companySavedCandidatesApi.remove(studentId);
+      } else {
+        await companySavedCandidatesApi.save(
+          studentId,
+          scopedJobId !== 'ALL' ? scopedJobId : undefined,
+        );
       }
-      return next;
-    });
+    } catch {
+      // Revert on failure
+      setSavedCandidates((prev) =>
+        isSaved ? [...prev, studentId] : prev.filter((id) => id !== studentId),
+      );
+    }
+  }
+
+  async function handleFeedback(studentId: string, rating: 'RELEVANT' | 'NOT_RELEVANT') {
+    setFeedbackSent((prev) => ({ ...prev, [studentId]: rating }));
+    try {
+      await companyFeedbackApi.submitEmployerFeedback({
+        studentId,
+        openingId: scopedJobId !== 'ALL' ? scopedJobId : undefined,
+        rating: rating === 'RELEVANT' ? 'RELEVANT' : 'NOT_RELEVANT',
+      });
+    } catch {
+      // Ignore network errors on feedback
+    }
   }
 
   async function performSearch() {
@@ -101,6 +125,12 @@ export default function SearchStudentsPage() {
       const data = await companyStudentsApi.search({
         q: query.trim() || undefined,
         skillCode: skillCode.trim() || undefined,
+        university: university.trim() || undefined,
+        gradYear: gradYear !== 'Any Year' ? gradYear : undefined,
+        availability: availability !== 'Any Availability' ? availability : undefined,
+        minLevel: minLevel !== 'Any Level' ? minLevel : undefined,
+        verificationType: verificationType !== 'All Verified' ? verificationType : undefined,
+        scopedJobId: scopedJobId !== 'ALL' ? scopedJobId : undefined,
       });
       setResults(data ?? []);
     } catch (err) {
@@ -113,6 +143,14 @@ export default function SearchStudentsPage() {
 
   useEffect(() => {
     performSearch().catch(() => {});
+    companySavedCandidatesApi
+      .list()
+      .then((res) => {
+        if (res?.savedCandidates) {
+          setSavedCandidates(res.savedCandidates.map((sc) => sc.studentId));
+        }
+      })
+      .catch(() => {});
     companyJobsApi
       .list()
       .then((res) => {
@@ -438,6 +476,33 @@ export default function SearchStudentsPage() {
                           {savedCandidates.includes(candidate.studentId) ? 'Saved' : 'Save'}
                         </span>
                       </button>
+
+                      <div className="flex items-center rounded-lg border border-zinc-200 bg-white p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleFeedback(candidate.studentId, 'RELEVANT')}
+                          title="Relevant candidate match (I378)"
+                          className={`rounded p-1.5 transition-colors ${
+                            feedbackSent[candidate.studentId] === 'RELEVANT'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'text-zinc-400 hover:text-emerald-600'
+                          }`}
+                        >
+                          <ThumbsUp className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFeedback(candidate.studentId, 'NOT_RELEVANT')}
+                          title="Not relevant match (I378)"
+                          className={`rounded p-1.5 transition-colors ${
+                            feedbackSent[candidate.studentId] === 'NOT_RELEVANT'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'text-zinc-400 hover:text-rose-600'
+                          }`}
+                        >
+                          <ThumbsDown className="size-3.5" />
+                        </button>
+                      </div>
 
                       <Link
                         href={`/students/${candidate.studentId}`}

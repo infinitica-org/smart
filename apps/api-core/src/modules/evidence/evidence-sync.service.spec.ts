@@ -56,9 +56,7 @@ describe('EvidenceSyncService versioning', () => {
       appendVersion: vi.fn(),
     };
 
-    const skillInference = {
-      recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
-    };
+    const skillInference = { inferSkillsFromEvidenceRecord: vi.fn() };
 
     const service = new EvidenceSyncService(
       prisma as never,

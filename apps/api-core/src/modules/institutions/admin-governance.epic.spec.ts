@@ -75,6 +75,8 @@ function setupAdminEpicTest() {
     },
     companyVerification: {
       count: vi.fn().mockResolvedValue(3),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     auditLog: {
       create: vi.fn().mockResolvedValue({}),
@@ -166,6 +168,10 @@ function setupAdminEpicTest() {
     },
     studentBatch: {
       groupBy: vi.fn().mockResolvedValue([]),
+    },
+    kafkaOutbox: {
+      count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
 
@@ -290,6 +296,7 @@ describe('Epic ADMIN-01: Superadmin Platform Governance & Audit Logging (Th6-I50
       {
         email: 'newadmin@smart.test',
         fullName: 'Platform Admin',
+        reason: 'Superadmin staff provisioning',
       },
       adminUserId,
     );

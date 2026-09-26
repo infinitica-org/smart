@@ -64,10 +64,16 @@ import type {
   CompanyVerificationReviewDetailDto,
   ResolveVerificationRequest,
   UpdatePlanCapacityRequest,
+  UpdatePlanPriceRequest,
   VerificationQueueItemDto,
   FeatureFlagDto,
   FeatureFlagOverrideDto,
   FeatureFlagOverrideTenantType,
+  GetAdminDashboardQuery,
+  FlaggedOrganizationDto,
+  FlaggedOrganizationCategory,
+  BulkResolveCompanyVerificationsRequest,
+  BulkOperationResult,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
@@ -935,6 +941,8 @@ export class InstitutionsService {
       code: plan.code,
       name: plan.name,
       candidateCapacity: plan.candidateCapacity,
+      priceInr: plan.priceInr,
+      isCustomPrice: plan.isCustomPrice,
       institutionCount: plan._count.institutions,
       entitlements: plan.entitlements.map((row) => ({
         key: row.featureFlag.key,
@@ -1006,6 +1014,45 @@ export class InstitutionsService {
     // Plan-level edits are rare admin actions; tenants on this plan see the
     // change once their 60s entitlement cache entry naturally expires rather
     // than us enumerating and busting every tenant's key here.
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
+  }
+
+  async updatePlanPrice(
+    planId: string,
+    body: UpdatePlanPriceRequest,
+    actorId: string,
+  ): Promise<SubscriptionPlanDto> {
+    const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    const prevPriceInr = plan.priceInr;
+    const prevIsCustomPrice = plan.isCustomPrice;
+    await this.prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        ...(body.priceInr !== undefined ? { priceInr: body.priceInr } : {}),
+        ...(body.isCustomPrice !== undefined ? { isCustomPrice: body.isCustomPrice } : {}),
+      },
+    });
+    await this.writeAudit(actorId, 'plan.price_updated', 'plan', planId, 'plan price', {
+      priceInr: body.priceInr ?? null,
+      isCustomPrice: body.isCustomPrice ?? null,
+      previousPriceInr: prevPriceInr,
+      previousIsCustomPrice: prevIsCustomPrice,
+    });
     const updated = (await this.listPlans()).find((row) => row.planId === planId);
     if (!updated) {
       throw new NotFoundException({
@@ -1176,7 +1223,57 @@ export class InstitutionsService {
     }
   }
 
-  async getDashboard(): Promise<AdminDashboardDto> {
+  async getDashboard(query: GetAdminDashboardQuery = {}): Promise<AdminDashboardDto> {
+    if (query.institutionId && query.companyId) {
+      throw new BadRequestException({
+        error: 'invalid_filter',
+        message: 'Cannot supply both institutionId and companyId to dashboard query.',
+        statusCode: 400,
+      });
+    }
+
+    const fromDate = query.from ? new Date(query.from) : undefined;
+    const toDate = query.to ? new Date(query.to) : undefined;
+    const dateFilter = fromDate || toDate ? { gte: fromDate, lte: toDate } : undefined;
+
+    const DUMMY_UUID = '00000000-0000-0000-0000-000000000000';
+    const instIdFilter = query.companyId ? DUMMY_UUID : query.institutionId;
+    const compIdFilter = query.institutionId ? DUMMY_UUID : query.companyId;
+
+    const instWhere: Prisma.InstitutionWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(instIdFilter ? { id: instIdFilter } : {}),
+    };
+
+    const compWhere: Prisma.CompanyWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(compIdFilter ? { id: compIdFilter } : {}),
+    };
+
+    const userWhere: Prisma.UserWhereInput = {
+      role: 'STUDENT',
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(instIdFilter ? { institutionId: instIdFilter } : {}),
+    };
+
+    const attemptWhere: Prisma.AttemptWhereInput = {
+      integrityFlag: {
+        in: [
+          'FLAGGED_TIMING',
+          'FLAGGED_PROCTOR',
+          'FLAGGED_SIMILARITY',
+          'FLAGGED_AUDIO',
+          'UNDER_REVIEW',
+        ],
+      },
+      ...(dateFilter ? { startedAt: dateFilter } : {}),
+      ...(instIdFilter ? { user: { institutionId: instIdFilter } } : {}),
+    };
+
+    const auditWhere: Prisma.AuditLogWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+    };
+
     const [
       total,
       held,
@@ -1190,57 +1287,119 @@ export class InstitutionsService {
       flaggedAttempts,
       plans,
       recent,
+      companyCompletedCount,
+      oldestPendingCompany,
+      completedCompanyVerifications,
+      outboxPendingCount,
+      outboxCompletedCount,
+      publishedOutboxEvents,
     ] = await Promise.all([
-      this.prisma.institution.count(),
-      this.prisma.institution.count({ where: { heldAt: { not: null }, deactivatedAt: null } }),
-      this.prisma.institution.count({ where: { deactivatedAt: { not: null } } }),
-      this.prisma.user.count({ where: { role: 'STUDENT' } }),
-      this.prisma.user.count({ where: { role: 'STUDENT', heldAt: { not: null } } }),
-      // Mirrors resolveSessionHold(): a student can't log in if their own account is
-      // held OR their institution is held/deactivated, even when their own heldAt is null.
+      this.prisma.institution.count({ where: instWhere }),
+      this.prisma.institution.count({
+        where: { ...instWhere, heldAt: { not: null }, deactivatedAt: null },
+      }),
+      this.prisma.institution.count({
+        where: { ...instWhere, deactivatedAt: { not: null } },
+      }),
+      this.prisma.user.count({ where: userWhere }),
+      this.prisma.user.count({ where: { ...userWhere, heldAt: { not: null } } }),
       this.prisma.user.count({
         where: {
-          role: 'STUDENT',
+          ...userWhere,
           heldAt: null,
           institution: { OR: [{ heldAt: { not: null } }, { deactivatedAt: { not: null } }] },
         },
       }),
-      this.prisma.company.count(),
-      this.prisma.company.count({ where: { verificationStatus: 'PENDING' } }),
-      this.prisma.institution.count({ where: { verificationStatus: 'PENDING' } }),
-      this.prisma.attempt.count({
-        where: {
-          integrityFlag: {
-            in: [
-              'FLAGGED_TIMING',
-              'FLAGGED_PROCTOR',
-              'FLAGGED_SIMILARITY',
-              'FLAGGED_AUDIO',
-              'UNDER_REVIEW',
-            ],
-          },
-        },
+      this.prisma.company.count({ where: compWhere }),
+      this.prisma.company.count({
+        where: { ...compWhere, verificationStatus: 'PENDING' },
       }),
+      this.prisma.institution.count({
+        where: { ...instWhere, verificationStatus: 'PENDING' },
+      }),
+      this.prisma.attempt.count({ where: attemptWhere }),
       this.prisma.subscriptionPlan.findMany({
-        include: { _count: { select: { institutions: true } } },
+        include: { _count: { select: { institutions: { where: instWhere } } } },
       }),
       this.prisma.auditLog.findMany({
+        where: auditWhere,
         include: { actor: { select: { email: true, role: true } } },
         orderBy: { createdAt: 'desc' },
         take: 8,
       }),
+      this.prisma.companyVerification.count({
+        where: {
+          reviewedAt: { not: null },
+          ...(dateFilter ? { reviewedAt: dateFilter } : {}),
+          ...(compIdFilter ? { companyId: compIdFilter } : {}),
+        },
+      }),
+      this.prisma.companyVerification.findFirst({
+        where: { reviewedAt: null, ...(compIdFilter ? { companyId: compIdFilter } : {}) },
+        orderBy: { submittedAt: 'asc' },
+        select: { submittedAt: true },
+      }),
+      this.prisma.companyVerification.findMany({
+        where: {
+          reviewedAt: { not: null },
+          ...(dateFilter ? { reviewedAt: dateFilter } : {}),
+          ...(compIdFilter ? { companyId: compIdFilter } : {}),
+        },
+        select: { submittedAt: true, reviewedAt: true },
+        take: 1000,
+      }),
+      this.prisma.kafkaOutbox.count({ where: { publishedAt: null } }),
+      this.prisma.kafkaOutbox.count({
+        where: {
+          publishedAt: { not: null },
+          ...(dateFilter ? { publishedAt: dateFilter } : {}),
+        },
+      }),
+      this.prisma.kafkaOutbox.findMany({
+        where: {
+          publishedAt: { not: null },
+          ...(dateFilter ? { publishedAt: dateFilter } : {}),
+        },
+        select: { createdAt: true, publishedAt: true },
+        take: 1000,
+      }),
     ]);
+
+    const oldestPendingSeconds = oldestPendingCompany?.submittedAt
+      ? Math.max(0, Math.floor((Date.now() - oldestPendingCompany.submittedAt.getTime()) / 1000))
+      : null;
+
+    let companyAvgMs: number | null = null;
+    if (completedCompanyVerifications.length > 0) {
+      const totalMs = completedCompanyVerifications.reduce((sum: number, v) => {
+        const sub = v.submittedAt ? v.submittedAt.getTime() : 0;
+        const rev = v.reviewedAt ? v.reviewedAt.getTime() : sub;
+        return sum + Math.max(0, rev - sub);
+      }, 0);
+      companyAvgMs = Math.round(totalMs / completedCompanyVerifications.length);
+    }
+
+    let outboxAvgMs: number | null = null;
+    if (publishedOutboxEvents.length > 0) {
+      const totalMs = publishedOutboxEvents.reduce((sum: number, o) => {
+        const created = o.createdAt.getTime();
+        const published = o.publishedAt ? o.publishedAt.getTime() : created;
+        return sum + Math.max(0, published - created);
+      }, 0);
+      outboxAvgMs = Math.round(totalMs / publishedOutboxEvents.length);
+    }
+
     return {
       institutions: {
         total,
-        active: total - held - deactivated,
+        active: Math.max(0, total - held - deactivated),
         held,
         deactivated,
       },
       companies: { total: companyTotal, pendingVerification: companyPending },
       students: {
         total: studentsTotal,
-        active: studentsTotal - studentsHeld - studentsBlockedByTenant,
+        active: Math.max(0, studentsTotal - studentsHeld - studentsBlockedByTenant),
         held: studentsHeld + studentsBlockedByTenant,
       },
       planMix: plans.map((plan) => ({ code: plan.code, count: plan._count.institutions })),
@@ -1248,7 +1407,153 @@ export class InstitutionsService {
       pendingVerifications: companyPending + institutionPending,
       flaggedAttempts,
       recentAudit: recent.map((row) => this.toAuditDto(row)),
+      queuePerformance: {
+        companyVerification: {
+          pending: companyPending,
+          completed: companyCompletedCount,
+          oldestPendingSeconds,
+          avgProcessingTimeMs: companyAvgMs,
+        },
+        kafkaOutbox: {
+          pending: outboxPendingCount,
+          completed: outboxCompletedCount,
+          avgProcessingTimeMs: outboxAvgMs,
+        },
+      },
     };
+  }
+
+  async bulkResolveCompanyVerifications(
+    body: BulkResolveCompanyVerificationsRequest,
+    actorId: string,
+  ): Promise<BulkOperationResult> {
+    const results: BulkOperationResult['results'] = [];
+    let succeeded = 0;
+    let failed = 0;
+
+    const uniqueItems = new Map<string, (typeof body.items)[number]>();
+    for (const item of body.items) {
+      if (!uniqueItems.has(item.tenantId)) {
+        uniqueItems.set(item.tenantId, item);
+      }
+    }
+
+    for (const item of Array.from(uniqueItems.values())) {
+      try {
+        const singleResult = await this.resolveVerification(
+          item.tenantId,
+          {
+            tenantType: 'company',
+            decision: body.decision,
+            reason: body.reason,
+            submissionId: item.submissionId,
+          },
+          actorId,
+        );
+        succeeded++;
+        results.push({
+          id: item.tenantId,
+          success: true,
+          data: singleResult,
+        });
+      } catch (err: unknown) {
+        failed++;
+        const errorObj = err as {
+          status?: number;
+          statusCode?: number;
+          error?: string;
+          message?: string;
+          response?: { error?: string; message?: string };
+        } | null;
+        const statusCode = errorObj?.status || errorObj?.statusCode || 500;
+        const code = errorObj?.response?.error || errorObj?.error || 'INTERNAL_ERROR';
+        const message =
+          errorObj?.response?.message ||
+          errorObj?.message ||
+          'Failed to process company verification.';
+        results.push({
+          id: item.tenantId,
+          success: false,
+          error: { code: String(code), message: String(message), statusCode: Number(statusCode) },
+        });
+      }
+    }
+
+    return {
+      total: uniqueItems.size,
+      succeeded,
+      failed,
+      results,
+    };
+  }
+
+  async listFlaggedOrganizations(): Promise<FlaggedOrganizationDto[]> {
+    const [companies, institutions] = await Promise.all([
+      this.prisma.company.findMany({
+        where: {
+          OR: [{ heldAt: { not: null } }, { verificationStatus: 'REJECTED' }],
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.institution.findMany({
+        where: {
+          OR: [
+            { heldAt: { not: null } },
+            { deactivatedAt: { not: null } },
+            { verificationStatus: 'REJECTED' },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const flaggedCompanies: FlaggedOrganizationDto[] = companies.map((c) => {
+      let category: FlaggedOrganizationCategory = 'EMPLOYER_HELD';
+      let status = 'On hold';
+      if (c.verificationStatus === 'REJECTED') {
+        category = 'EMPLOYER_VERIFICATION_REJECTED';
+        status = 'Rejected';
+      }
+      return {
+        organizationId: c.id,
+        name: c.name,
+        domain: c.domain ?? null,
+        tenantType: 'company',
+        status,
+        category,
+        reason: null,
+        createdAt: c.createdAt.toISOString(),
+        flaggedAt: c.heldAt?.toISOString() ?? c.createdAt.toISOString(),
+      };
+    });
+
+    const flaggedInstitutions: FlaggedOrganizationDto[] = institutions.map((i) => {
+      let category: FlaggedOrganizationCategory = 'UNIVERSITY_HELD';
+      let status = 'On hold';
+      if (i.deactivatedAt) {
+        category = 'UNIVERSITY_DEACTIVATED';
+        status = 'Deactivated';
+      } else if (i.verificationStatus === 'REJECTED') {
+        category = 'UNIVERSITY_HELD';
+        status = 'Rejected';
+      }
+      return {
+        organizationId: i.id,
+        name: i.name,
+        domain: i.domain ?? null,
+        tenantType: 'institution',
+        status,
+        category,
+        reason: null,
+        createdAt: i.createdAt.toISOString(),
+        flaggedAt:
+          i.heldAt?.toISOString() ?? i.deactivatedAt?.toISOString() ?? i.createdAt.toISOString(),
+      };
+    });
+
+    return [...flaggedCompanies, ...flaggedInstitutions].sort(
+      (a, b) => new Date(b.flaggedAt).getTime() - new Date(a.flaggedAt).getTime(),
+    );
   }
 
   async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { DataTable, PageStack, TableCell, TableRow } from '@/components/admin-ui';
 import { Button } from '@smart/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+import { api } from '@/lib/api';
 
 interface RegisteredPrompt {
   promptRef: string;
@@ -27,77 +28,102 @@ interface AuditLog {
   createdAt: string;
 }
 
+interface AdverseImpactGroup {
+  group: string;
+  totalAssessed: number;
+  clearedCount: number;
+  selectionRate: number;
+  impactRatio: number;
+  adverseImpactDetected: boolean;
+}
+
+interface CapabilityReviewItem {
+  capabilityId: string;
+  studentId: string;
+  skillCode: string | null;
+  capabilityLabel: string;
+  proficiency: string;
+  confidenceScore: number;
+  modelVersion: string;
+  inferredAt: string;
+}
+
 export default function AiGovernanceAdminPage() {
   const [prompts, setPrompts] = useState<RegisteredPrompt[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [, setLoading] = useState(true);
+  const [capabilityQueue, setCapabilityQueue] = useState<CapabilityReviewItem[]>([]);
+  const [adverseGroups, setAdverseGroups] = useState<AdverseImpactGroup[]>([]);
+  const [fourFifthsRuleMet, setFourFifthsRuleMet] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load mock / live registry data
-    setPrompts([
-      {
-        promptRef: 'capability-inference@1',
-        purpose: 'Infer provisional student capabilities from verified QLIX project evidence',
-        modelRole: 'PRIMARY_REASONING',
-        temperature: 0,
-        status: 'ACTIVE',
-      },
-      {
-        promptRef: 'project-defense-examiner@1',
-        purpose: 'Generate tailored project-defense interview questions and follow-ups',
-        modelRole: 'PRIMARY_REASONING',
-        temperature: 0.2,
-        status: 'ACTIVE',
-      },
-      {
-        promptRef: 'match-narrative@1',
-        purpose: 'Produce explainable match summaries for employers and students',
-        modelRole: 'COMMUNICATION',
-        temperature: 0.1,
-        status: 'ACTIVE',
-      },
-    ]);
-
-    setAuditLogs([
-      {
-        id: '9f8e7d6c-5b4a-4321-ba98-fe7654321001',
-        promptRef: 'capability-inference@1',
-        provider: 'GOOGLE',
-        model: 'gemini-1.5-pro',
-        promptTokens: 1240,
-        completionTokens: 410,
-        latencyMs: 1450,
-        estimatedCostUsd: 0.00165,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '8a7b6c5d-4e3f-4123-ab89-ef1234567890',
-        promptRef: 'project-defense-examiner@1',
-        provider: 'ANTHROPIC',
-        model: 'claude-3-5-sonnet-20241022',
-        promptTokens: 2100,
-        completionTokens: 380,
-        latencyMs: 1820,
-        estimatedCostUsd: 0.012,
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-      },
-    ]);
-
-    setLoading(false);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [promptRes, auditRes, adverseRes, capRes] = await Promise.all([
+          api.evaluation.listRegisteredPrompts(),
+          api.evaluation.listAiAuditLogs(),
+          api.evaluation.getAdverseImpact(),
+          api.evaluation.listCapabilityReviewQueue(20).catch(() => ({ items: [] })),
+        ]);
+        if (cancelled) return;
+        setPrompts(promptRes.prompts);
+        setCapabilityQueue(capRes.items);
+        setAuditLogs(
+          auditRes.logs.map((log) => ({
+            id: log.id,
+            promptRef: log.promptRef,
+            provider: log.provider,
+            model: log.model,
+            promptTokens: log.promptTokens,
+            completionTokens: log.completionTokens,
+            latencyMs: log.latencyMs,
+            estimatedCostUsd: log.estimatedCostUsd,
+            createdAt: log.createdAt,
+          })),
+        );
+        setAdverseGroups(adverseRes.groupRates);
+        setFourFifthsRuleMet(adverseRes.fourFifthsRuleMet);
+      } catch {
+        if (!cancelled) {
+          setStatusMessage('Could not load AI governance data from the backend.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function handleToggleModel(provider: string, model: string, currentActive: boolean) {
+  async function handleToggleModel(
+    provider: 'ANTHROPIC' | 'GOOGLE' | 'OPENROUTER',
+    model: string,
+    currentActive: boolean,
+  ) {
     setToggling(true);
-    setTimeout(() => {
+    try {
+      await api.evaluation.toggleModelVersion({
+        provider,
+        model,
+        active: !currentActive,
+        reason: currentActive
+          ? 'Disabled via Super Admin AI Governance console'
+          : 'Restored by Super Admin',
+      });
       setStatusMessage(
         currentActive
           ? `Model ${model} (${provider}) has been disabled via circuit breaker.`
           : `Model ${model} (${provider}) has been restored.`,
       );
+    } catch {
+      setStatusMessage(`Failed to toggle model version ${model} on backend.`);
+    } finally {
       setToggling(false);
-    }, 400);
+    }
   }
 
   return (
@@ -219,6 +245,68 @@ export default function AiGovernanceAdminPage() {
         </CardContent>
       </Card>
 
+      {/* Low-Confidence Capability Review Queue (I563) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ShieldAlert className="size-4 text-amber-600" /> Low-Confidence Capability Review Queue
+            (I563)
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Review and adjudicate inferred candidate capabilities scoring below the 0.55 confidence
+            threshold before publication.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {capabilityQueue.length > 0 ? (
+            <DataTable
+              headers={[
+                'Capability ID',
+                'Student',
+                'Skill / Label',
+                'Proficiency',
+                'Confidence',
+                'Model Version',
+              ]}
+            >
+              {capabilityQueue.map((item) => (
+                <TableRow key={item.capabilityId}>
+                  <TableCell className="font-mono text-xs text-zinc-500">
+                    {item.capabilityId.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-zinc-700">
+                    {item.studentId.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <span className="font-semibold text-zinc-900 block">
+                      {item.capabilityLabel}
+                    </span>
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {item.skillCode || 'N/A'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs font-semibold text-zinc-800">
+                    {item.proficiency}
+                  </TableCell>
+                  <TableCell className="text-xs font-mono">
+                    <span className="rounded bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-[10px] font-bold">
+                      {(item.confidenceScore * 100).toFixed(1)}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-zinc-500">
+                    {item.modelVersion}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </DataTable>
+          ) : (
+            <p className="text-xs text-zinc-500">
+              No low-confidence capability inferences awaiting review.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* AI Evaluation Audit Trail */}
       <Card>
         <CardHeader>
@@ -280,25 +368,77 @@ export default function AiGovernanceAdminPage() {
               <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">
                 Rule Status
               </span>
-              <span className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                <CheckCircle className="size-3.5" /> 4/5ths Rule Compliant
+              <span
+                className={[
+                  'mt-1 inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold',
+                  fourFifthsRuleMet
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-rose-100 text-rose-800',
+                ].join(' ')}
+              >
+                <CheckCircle className="size-3.5" />
+                {fourFifthsRuleMet ? '4/5ths Rule Compliant' : 'Adverse Impact Detected'}
               </span>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
               <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">
-                Impact Ratio
+                Lowest Impact Ratio
               </span>
-              <span className="mt-1 text-sm font-bold text-zinc-900 font-mono">1.00</span>
+              <span className="mt-1 text-sm font-bold text-zinc-900 font-mono">
+                {adverseGroups.length > 0
+                  ? Math.min(...adverseGroups.map((g) => g.impactRatio)).toFixed(2)
+                  : '1.00'}
+              </span>
               <span className="text-[11px] text-zinc-500 block">Threshold: &ge; 0.80</span>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
               <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">
-                Track / Scope
+                Groups Evaluated
               </span>
-              <span className="mt-1 text-sm font-semibold text-zinc-900">TECH_FULLSTACK</span>
-              <span className="text-[11px] text-zinc-500 block">Baseline Assessment Cohort</span>
+              <span className="mt-1 text-sm font-semibold text-zinc-900">
+                {adverseGroups.length}
+              </span>
+              <span className="text-[11px] text-zinc-500 block">Selection-rate cohorts</span>
             </div>
           </div>
+
+          {adverseGroups.length > 0 ? (
+            <DataTable
+              headers={['Group', 'Assessed', 'Cleared', 'Selection rate', 'Impact ratio', 'Status']}
+            >
+              {adverseGroups.map((group) => (
+                <TableRow key={group.group}>
+                  <TableCell className="text-xs font-medium text-zinc-800">{group.group}</TableCell>
+                  <TableCell className="text-xs font-mono">{group.totalAssessed}</TableCell>
+                  <TableCell className="text-xs font-mono">{group.clearedCount}</TableCell>
+                  <TableCell className="text-xs font-mono">
+                    {(group.selectionRate * 100).toFixed(1)}%
+                  </TableCell>
+                  <TableCell className="text-xs font-mono">
+                    {group.impactRatio.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={[
+                        'rounded px-2 py-0.5 text-[10px] font-bold',
+                        group.adverseImpactDetected
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-emerald-100 text-emerald-800',
+                      ].join(' ')}
+                    >
+                      {group.adverseImpactDetected ? 'Adverse' : 'Compliant'}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </DataTable>
+          ) : (
+            <p className="text-xs text-zinc-500">
+              {loading
+                ? 'Loading adverse-impact report…'
+                : 'No assessment attempts recorded for the baseline cohort yet.'}
+            </p>
+          )}
 
           <div className="rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-600">
             <p className="font-semibold text-zinc-900 mb-1">Adverse Impact Methodology:</p>

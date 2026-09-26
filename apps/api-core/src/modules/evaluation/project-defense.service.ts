@@ -459,11 +459,17 @@ export class ProjectDefenseService {
           const defenseScore = Effect.runSync(
             computeDefenseScore(parsed.dimensions, PROJECT_DEFENSE_RUBRIC_WEIGHTS),
           );
-          const routedToReview = parsed.ownershipConcern || session.context.verifyFlags.length > 0;
+          // INT-01 / I295: low-confidence or borderline cases (score < 50), ownership concerns,
+          // or verification flags route directly to reviewer queue.
+          const isLowConfidence = defenseScore < 50;
+          const routedToReview =
+            parsed.ownershipConcern || session.context.verifyFlags.length > 0 || isLowConfidence;
           return ProjectDefenseGradeSchema.parse({
             defenseScore,
             ownershipConcern: parsed.ownershipConcern,
-            ownershipConcernReason: parsed.ownershipConcernReason,
+            ownershipConcernReason:
+              parsed.ownershipConcernReason ??
+              (isLowConfidence ? 'Defense score below 50% confidence threshold.' : null),
             dimensions: parsed.dimensions,
             routedToReview,
             promptRef: PROJECT_DEFENSE_GRADER_V2_PROMPT_REF,
@@ -690,7 +696,7 @@ export class ProjectDefenseService {
   private shouldUseDefenseStub(): boolean {
     if (this.gateway.hasCallableProvider()) return false;
     if (env.NODE_ENV === 'production') return false;
-    return env.NODE_ENV === 'test' || env.NODE_ENV === 'development';
+    return env.ENABLE_DEFENSE_STUB || env.NODE_ENV === 'test';
   }
 
   /** Drop stale active pointer and unblock the student when Redis session TTL expired. */

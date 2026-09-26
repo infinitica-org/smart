@@ -63,17 +63,42 @@ export default function AdminHomePage() {
   const [error, setError] = useState<string | null>(null);
   const [aiUsage, setAiUsage] = useState<AiUsageSummaryDto | null>(null);
 
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [selectedOrgType, setSelectedOrgType] = useState<'ALL' | 'INSTITUTION' | 'COMPANY'>('ALL');
+  const [selectedOrgId, setSelectedOrgId] = useState('');
+
   useEffect(() => {
     api.onboarding
-      .dashboard()
-      .then(setData)
-      .catch(() => setError('Failed to load live database dashboard.'));
+      .listInstitutions()
+      .then((items) => setInstitutions(items.map((i) => ({ id: i.institutionId, name: i.name }))))
+      .catch(() => undefined);
+
+    api.onboarding
+      .listCompanies()
+      .then((items) => setCompanies(items.map((c) => ({ id: c.companyId, name: c.name }))))
+      .catch(() => undefined);
 
     api.onboarding
       .aiUsage()
       .then(setAiUsage)
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    const query: Record<string, string> = {};
+    if (fromDate) query.from = new Date(fromDate).toISOString();
+    if (toDate) query.to = new Date(`${toDate}T23:59:59.999Z`).toISOString();
+    if (selectedOrgType === 'INSTITUTION' && selectedOrgId) query.institutionId = selectedOrgId;
+    if (selectedOrgType === 'COMPANY' && selectedOrgId) query.companyId = selectedOrgId;
+
+    api.onboarding
+      .dashboard(query)
+      .then(setData)
+      .catch(() => setError('Failed to load operational dashboard metrics.'));
+  }, [fromDate, toDate, selectedOrgType, selectedOrgId]);
 
   if (error) return <InlineAlert tone="danger" title={error} />;
   if (!data) return <LoadingOverview />;
@@ -83,6 +108,83 @@ export default function AdminHomePage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 pb-12 font-sans pt-2">
+      {/* 🔍 Filter Bar for T17 Operational Dashboard */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-200/80 bg-white p-3.5 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <span className="font-bold text-zinc-900">Operational Filters:</span>
+          <div className="flex items-center gap-1.5">
+            <label className="text-zinc-500 font-medium">From:</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-900 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-zinc-500 font-medium">To:</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-900 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-zinc-500 font-medium">Org Scope:</label>
+            <select
+              value={selectedOrgType}
+              onChange={(e) => {
+                setSelectedOrgType(e.target.value as 'ALL' | 'INSTITUTION' | 'COMPANY');
+                setSelectedOrgId('');
+              }}
+              className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-900 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="ALL">All Organizations</option>
+              <option value="INSTITUTION">University / Institution</option>
+              <option value="COMPANY">Company / Employer</option>
+            </select>
+          </div>
+          {selectedOrgType !== 'ALL' ? (
+            <div className="flex items-center gap-1.5">
+              <label className="text-zinc-500 font-medium">Organization:</label>
+              <select
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-900 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 max-w-xs truncate"
+              >
+                <option value="">All in type</option>
+                {selectedOrgType === 'INSTITUTION'
+                  ? institutions.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}
+                      </option>
+                    ))
+                  : companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
+        {fromDate || toDate || selectedOrgId || selectedOrgType !== 'ALL' ? (
+          <button
+            type="button"
+            onClick={() => {
+              setFromDate('');
+              setToDate('');
+              setSelectedOrgType('ALL');
+              setSelectedOrgId('');
+            }}
+            className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:underline"
+          >
+            Clear Filters
+          </button>
+        ) : null}
+      </div>
+
       {/* 📊 7 Stat Cards Grid - Clean Monochrome SaaS Styling */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-0.5">
@@ -254,6 +356,105 @@ export default function AdminHomePage() {
           </Link>
         </div>
       </section>
+
+      {/* ⏱️ Queue Volume & Processing Time SLA (T23) */}
+      {data.queuePerformance ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-0.5">
+            <div>
+              <h2 className="font-heading text-base font-bold tracking-tight text-zinc-900">
+                Queue Performance & SLA Operations
+              </h2>
+              <p className="text-xs text-zinc-500">
+                Queue volume, oldest backlog age, and average processing latency
+              </p>
+            </div>
+            <span className="text-[11px] font-medium text-zinc-400">T23 Queue Monitor</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Verification Queue Performance */}
+            <div className="rounded-md border border-zinc-200/80 bg-white p-5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="size-4 text-zinc-700" />
+                  <h3 className="text-xs font-bold text-zinc-900">Company Verification Queue</h3>
+                </div>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">
+                  {data.queuePerformance.companyVerification.pending} pending
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Backlog Age</div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.companyVerification.oldestPendingSeconds == null
+                      ? 'None pending'
+                      : data.queuePerformance.companyVerification.oldestPendingSeconds < 60
+                        ? `${data.queuePerformance.companyVerification.oldestPendingSeconds}s`
+                        : `${Math.floor(data.queuePerformance.companyVerification.oldestPendingSeconds / 60)}m`}
+                  </div>
+                </div>
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">
+                    Avg Turnaround
+                  </div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.companyVerification.avgProcessingTimeMs == null
+                      ? 'N/A'
+                      : data.queuePerformance.companyVerification.avgProcessingTimeMs < 1000
+                        ? `${data.queuePerformance.companyVerification.avgProcessingTimeMs}ms`
+                        : `${(data.queuePerformance.companyVerification.avgProcessingTimeMs / 1000).toFixed(1)}s`}
+                  </div>
+                </div>
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Resolved</div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.companyVerification.completed}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Kafka Outbox Performance */}
+            <div className="rounded-md border border-zinc-200/80 bg-white p-5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="size-4 text-zinc-700" />
+                  <h3 className="text-xs font-bold text-zinc-900">Outbox Relay Queue</h3>
+                </div>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">
+                  {data.queuePerformance.kafkaOutbox.pending} in flight
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">In Flight</div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.kafkaOutbox.pending}
+                  </div>
+                </div>
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Relay Latency</div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.kafkaOutbox.avgProcessingTimeMs == null
+                      ? 'N/A'
+                      : data.queuePerformance.kafkaOutbox.avgProcessingTimeMs < 1000
+                        ? `${data.queuePerformance.kafkaOutbox.avgProcessingTimeMs}ms`
+                        : `${(data.queuePerformance.kafkaOutbox.avgProcessingTimeMs / 1000).toFixed(1)}s`}
+                  </div>
+                </div>
+                <div className="rounded-md bg-zinc-50 p-2.5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Published</div>
+                  <div className="mt-1 font-mono text-sm font-bold text-zinc-900">
+                    {data.queuePerformance.kafkaOutbox.completed}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* 📊 Main Content Bento: Recent Activity & Tenant Breakdown */}
       <div className="grid gap-5 xl:grid-cols-3">

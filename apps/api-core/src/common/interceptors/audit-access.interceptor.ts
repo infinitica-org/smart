@@ -50,6 +50,7 @@ export class AuditAccessInterceptor implements NestInterceptor {
     request: FastifyRequest & { user?: RequestUser; routeOptions?: { url?: string } },
     options: AuditAccessOptions,
   ): Promise<void> {
+    const actor = request.user;
     const params = request.params as Record<string, string> | undefined;
     const resourceId = params?.[options.idParam];
     const actor = request.user;

@@ -8,6 +8,7 @@ import { CreditCard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 import { Switch } from '@smart/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@smart/ui/tabs';
+import { Badge } from '@smart/ui/badge';
 import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
@@ -23,12 +24,21 @@ function formatApiError(err: unknown, fallback: string): string {
   return isSmartApiError(err) ? err.message : fallback;
 }
 
+/** Render a plan's price in a human-readable format. */
+function formatPlanPrice(plan: SubscriptionPlanDto): string {
+  if (plan.isCustomPrice) return 'Custom';
+  if (plan.priceInr === null) return '—';
+  if (plan.priceInr === 0) return '₹0';
+  return `₹${plan.priceInr.toLocaleString('en-IN')}`;
+}
+
 export default function PlansPage() {
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([]);
   const [flags, setFlags] = useState<FeatureFlagDto[]>([]);
   const [overrides, setOverrides] = useState<FeatureFlagOverrideDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [capacityDrafts, setCapacityDrafts] = useState<Record<string, string>>({});
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
   async function load() {
     const [loadedPlans, loadedFlags, loadedOverrides] = await Promise.all([
@@ -43,6 +53,9 @@ export default function PlansPage() {
       Object.fromEntries(
         loadedPlans.map((plan) => [plan.planId, plan.candidateCapacity?.toString() ?? '']),
       ),
+    );
+    setPriceDrafts(
+      Object.fromEntries(loadedPlans.map((plan) => [plan.planId, plan.priceInr?.toString() ?? ''])),
     );
   }
 
@@ -79,11 +92,27 @@ export default function PlansPage() {
     }
   }
 
+  async function savePrice(plan: SubscriptionPlanDto) {
+    if (plan.isCustomPrice) return; // Custom plans are not edited via numeric input
+    const raw = priceDrafts[plan.planId] ?? '';
+    const priceInr = raw.trim() === '' ? null : Number(raw);
+    if (priceInr !== null && (!Number.isInteger(priceInr) || priceInr < 0)) {
+      setError('Price must be a non-negative whole number in INR, or blank to clear.');
+      return;
+    }
+    try {
+      await api.onboarding.updatePlanPrice(plan.planId, { priceInr });
+      await load();
+    } catch (err) {
+      setError(formatApiError(err, 'Could not update price.'));
+    }
+  }
+
   return (
     <PageStack>
       <PageHeader
         icon={CreditCard}
-        title="Plans & flags"
+        title="Plans &amp; flags"
         description="Plans, the feature flag catalog, plan-level entitlements, and per-tenant overrides — four separate models, kept as separate views."
       />
       {error ? <InlineAlert tone="danger" title={error} /> : null}
@@ -96,21 +125,63 @@ export default function PlansPage() {
         </TabsList>
 
         <TabsContent value="plans" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan) => (
               <Card key={plan.planId}>
                 <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="leading-snug">{plan.name}</CardTitle>
+                    {plan.isCustomPrice && (
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        Custom
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription>
                     {plan.institutionCount} institution{plan.institutionCount === 1 ? '' : 's'}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {/* ---- Price display ---- */}
+                  <div className="rounded-md border bg-muted/40 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Base price (INR)</p>
+                    <p className="mt-0.5 text-xl font-semibold tracking-tight">
+                      {formatPlanPrice(plan)}
+                    </p>
+                  </div>
+
+                  {/* ---- Price editing (not available for ENTERPRISE/custom plans) ---- */}
+                  {!plan.isCustomPrice && (
+                    <label className="text-sm">
+                      <span className="mb-1 block text-muted-foreground">
+                        Configure price (₹ INR, 0 = free)
+                      </span>
+                      <AdminInput
+                        id={`price-${plan.planId}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        placeholder="Not set"
+                        value={priceDrafts[plan.planId] ?? ''}
+                        onChange={(event) =>
+                          setPriceDrafts((prev) => ({
+                            ...prev,
+                            [plan.planId]: event.target.value,
+                          }))
+                        }
+                        onBlur={() => void savePrice(plan)}
+                      />
+                    </label>
+                  )}
+
+                  {/* ---- Candidate capacity ---- */}
                   <label className="text-sm">
                     <span className="mb-1 block text-muted-foreground">
                       Candidate capacity (blank = unlimited)
                     </span>
                     <AdminInput
+                      id={`capacity-${plan.planId}`}
                       type="number"
                       min={1}
                       inputMode="numeric"
@@ -149,7 +220,7 @@ export default function PlansPage() {
         </TabsContent>
 
         <TabsContent value="entitlements" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan) => (
               <Card key={plan.planId}>
                 <CardHeader>

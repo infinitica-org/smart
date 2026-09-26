@@ -23,14 +23,14 @@ export type EmailTemplateName =
   | 'company-onboarding-email-verify'
   /** Phase 6: company representative password setup after SA approval. */
   | 'company-portal-invite'
+  /** EMP-01 #348: reviewer rejected / requested changes; link back into the application. */
+  | 'company-verification-resubmit'
   /** APP-01: confirmation to the student right after they apply. */
   | 'application-submitted'
   /** APP-01: a company member is told a student applied to their job. */
   | 'application-received'
   /** APP-01: a company member is told an applicant withdrew. */
-  | 'application-withdrawn'
-  /** EMP-01 #348: reviewer rejected / requested changes; link back into the application. */
-  | 'company-verification-resubmit';
+  | 'application-withdrawn';
 
 export interface CompanyOnboardingEmailVerifyData {
   readonly fullName: string;

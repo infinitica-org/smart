@@ -67,6 +67,9 @@ export * from './dto/company-onboarding.dto.js';
 export * from './dto/partnership.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/candidate-social.dto.js';
+export * from './dto/company-onboarding.dto.js';
+export * from './dto/evidence-review.dto.js';
+export * from './dto/evidence-version.dto.js';
 export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
@@ -91,6 +94,9 @@ export * from './dto/evidence.dto.js';
 export * from './dto/evidence-review.dto.js';
 export * from './dto/evidence-version.dto.js';
 export * from './dto/capability-inference-review.dto.js';
+export * from './dto/trust.dto.js';
+export * from './dto/support.dto.js';
+export * from './dto/interview.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

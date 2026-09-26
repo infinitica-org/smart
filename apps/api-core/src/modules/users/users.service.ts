@@ -57,10 +57,6 @@ const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class UsersService {
-  readonly owner = 'Vishal V';
-  readonly purpose =
-    'Current user profile, track enrolment, and CN-T01 minimal onboarding completion.';
-
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,

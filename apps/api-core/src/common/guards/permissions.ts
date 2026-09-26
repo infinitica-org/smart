@@ -31,6 +31,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<UserRole, readonly Permission[]>>
   STUDENT: [],
   B2B_PARTNER: [],
   COMPANY: [],
+  SUPPORT_AGENT: [],
+  SUPPORT_LEAD: [],
   PUBLIC: [],
 };
 

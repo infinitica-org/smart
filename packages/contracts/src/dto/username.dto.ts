@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UsernameStatusSchema } from '../domain/enums.js';
+import { ProfileSectionSchema, UsernameStatusSchema } from '../domain/enums.js';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
 
 /**
@@ -27,16 +27,19 @@ export type UsernameStatusResponse = z.infer<typeof UsernameStatusResponseSchema
 /**
  * CN-T09 — "Global visibility on/off only": no per-item toggles. `showInProgressItems`
  * is opt-in and only takes effect once `profileVisible` is on.
+ * T6 — `hiddenSections` allows hiding specific sections from public view.
  */
 export const UpdateProfileVisibilityRequestSchema = z.object({
   profileVisible: z.boolean(),
   showInProgressItems: z.boolean().optional(),
+  hiddenSections: z.array(ProfileSectionSchema).optional(),
 });
 export type UpdateProfileVisibilityRequest = z.infer<typeof UpdateProfileVisibilityRequestSchema>;
 
 export const ProfileVisibilityResponseSchema = z.object({
   profileVisible: z.boolean(),
   showInProgressItems: z.boolean(),
+  hiddenSections: z.array(z.string()).default([]),
 });
 export type ProfileVisibilityResponse = z.infer<typeof ProfileVisibilityResponseSchema>;
 

@@ -16,5 +16,7 @@ exports[`permission matrix (S6-VV-99) > changes only through a reviewed snapshot
     "audit.read",
     "audit.export",
   ],
+  "SUPPORT_AGENT": [],
+  "SUPPORT_LEAD": [],
 }
 `;

@@ -4,6 +4,7 @@ import { Tier2PublicUrlVerifier } from '../candidate-certificates/verification/t
 import { Tier3OcrVerifier } from '../candidate-certificates/verification/tier3-ocr-verifier.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceCatalogService } from './evidence-catalog.service.js';
+import { EvidenceAdminController } from './evidence-admin.controller.js';
 import { EvidenceController } from './evidence.controller.js';
 import { EvidenceExpirationService } from './evidence-expiration.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
@@ -24,7 +25,7 @@ import { SkillVerificationInferenceConsumer } from './skill-verification-inferen
 
 @Module({
   imports: [SkillClaimDeclareModule, NotificationsModule],
-  controllers: [EvidenceController],
+  controllers: [EvidenceController, EvidenceAdminController],
   providers: [
     EvidenceService,
     EvidenceVersionService,

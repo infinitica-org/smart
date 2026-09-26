@@ -10,7 +10,9 @@ import {
 } from '@smart/contracts';
 import { buildEmployerSkillInspection, buildSkillLevelExplanation } from '@smart/scoring-engine';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
+import { assertCanReadCandidateEvidenceVersions } from './evidence-version-auth.helper.js';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -38,6 +40,27 @@ export class SkillLevelExplanationService {
   async getForStudent(studentId: string, skillCode: string) {
     const payload = await this.buildPayload(studentId, skillCode);
     return GetSkillLevelExplanationResponseSchema.parse(payload);
+  }
+
+  async getCandidateSkillExplanation(caller: RequestUser, studentId: string, skillCode: string) {
+    const access = await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
+
+    const explanation = await this.getForStudent(studentId, skillCode);
+    const inference = await this.skillInference.getForStudent(studentId, skillCode);
+    const inspection = buildEmployerSkillInspection(
+      studentId,
+      explanation,
+      inference.evidenceCount,
+    );
+
+    if (access.redacted && inspection.reportRefs) {
+      inspection.reportRefs = inspection.reportRefs.map((ref) => ({
+        ...ref,
+        promptRef: undefined,
+      }));
+    }
+
+    return GetEmployerSkillInspectionResponseSchema.parse(inspection);
   }
 
   async getForEmployerInspection(institutionId: string, studentId: string, skillCode: string) {

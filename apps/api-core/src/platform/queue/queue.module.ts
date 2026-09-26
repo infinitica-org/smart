@@ -28,6 +28,8 @@ import {
   JD_PARSE_QUEUE,
   SKILL_VERIFY_GRADE_DLQ,
   SKILL_VERIFY_GRADE_QUEUE,
+  SCORE_RECALCULATION_DLQ,
+  SCORE_RECALCULATION_QUEUE,
   MATCH_RUN_DLQ,
   MATCH_RUN_QUEUE,
   PDF_GENERATION_DLQ,
@@ -51,6 +53,7 @@ const queues = [
   { name: MATCH_RUN_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: JD_PARSE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: SKILL_VERIFY_GRADE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: SCORE_RECALCULATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: SANDBOX_EXECUTION_DLQ },
   { name: AUDIO_EVALUATION_DLQ },
   { name: PDF_GENERATION_DLQ },
@@ -60,6 +63,7 @@ const queues = [
   { name: MATCH_RUN_DLQ },
   { name: JD_PARSE_DLQ },
   { name: SKILL_VERIFY_GRADE_DLQ },
+  { name: SCORE_RECALCULATION_DLQ },
 ];
 
 @Global()

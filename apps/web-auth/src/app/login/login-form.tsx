@@ -5,12 +5,16 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
 import { EMAIL_NOT_VERIFIED_ERROR } from '@smart/contracts';
+import { AlertCircle, CircleOff, X } from 'lucide-react';
 import { EyeIcon, EyeOffIcon } from '../../components/auth-icons';
 import { ResendVerification } from '../../components/resend-verification';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
 const inputClass =
-  'w-full h-12 rounded-md border border-[#e5e7eb] bg-white px-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] transition-[border-color,box-shadow] duration-150 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10';
+  'w-full h-12 rounded-md border bg-white px-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] transition-[border-color,box-shadow] duration-150 focus:outline-none focus:ring-2';
+const inputNormalClass = 'border-[#e5e7eb] focus:border-black focus:ring-black/10';
+const inputErrorClass =
+  'border-rose-500 focus:border-rose-600 focus:ring-rose-500/20 text-rose-900';
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -18,21 +22,49 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function validateEmail(val: string) {
+    if (!val.trim()) {
+      return 'Please enter a valid email address';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(val.trim())) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setLoading(true);
     setError(null);
+    setEmailError(null);
+    setPasswordError(null);
     setUnverifiedEmail(null);
+
+    const errMail = validateEmail(email);
+    if (errMail) {
+      setEmailError(errMail);
+      return;
+    }
+
+    if (!password) {
+      setPasswordError('Please enter your password');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const result = await api.auth.login({ email, password });
+      const result = await api.auth.login({ email: email.trim(), password });
       storeSession(result.accessToken);
       redirectForRole(result.user.role, result.accessToken, searchParams.get('returnTo'));
     } catch (err) {
       if (isSmartApiError(err) && err.code === EMAIL_NOT_VERIFIED_ERROR) {
         setError(err.message);
+        setEmailError('Email address is not verified');
         setUnverifiedEmail(email);
       } else if (
         isSmartApiError(err) &&
@@ -41,8 +73,11 @@ export function LoginForm() {
           err.code === 'account_held')
       ) {
         setError(err.message);
+        setEmailError(err.message);
       } else {
-        setError('Login failed. Check email and password.');
+        setError('Invalid email or password. Please verify your credentials and try again.');
+        setEmailError('Please enter a valid email address');
+        setPasswordError('Invalid password');
       }
     } finally {
       setLoading(false);
@@ -58,16 +93,7 @@ export function LoginForm() {
           Log in or sign up
         </h1>
 
-        {error ? (
-          <p
-            role="alert"
-            className="mt-5 w-full max-w-[420px] rounded-[11px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left text-sm text-rose-700"
-          >
-            {error}
-          </p>
-        ) : null}
         {unverifiedEmail ? <ResendVerification email={unverifiedEmail} /> : null}
-
         <div className="mt-8 w-full max-w-[420px] space-y-4">
           <button
             type="button"
@@ -109,7 +135,7 @@ export function LoginForm() {
           onSubmit={onSubmit}
           className="mt-2 w-full max-w-[420px] space-y-4 text-center mx-auto"
         >
-          <div className="w-full">
+          <div className="w-full text-left">
             <input
               id="email"
               type="email"
@@ -117,12 +143,28 @@ export function LoginForm() {
               autoComplete="email"
               placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError(null);
+                if (error) setError(null);
+              }}
+              onBlur={() => {
+                if (email) {
+                  const err = validateEmail(email);
+                  setEmailError(err);
+                }
+              }}
+              className={`${inputClass} ${emailError ? inputErrorClass : inputNormalClass}`}
             />
+            {emailError ? (
+              <div className="mt-2 flex items-center gap-2 text-left text-xs font-medium text-rose-600">
+                <CircleOff className="size-4 shrink-0 text-rose-600" />
+                <span>{emailError}</span>
+              </div>
+            ) : null}
           </div>
 
-          <div className="w-full">
+          <div className="w-full text-left">
             <div className="relative">
               <input
                 id="password"
@@ -131,8 +173,12 @@ export function LoginForm() {
                 autoComplete="current-password"
                 placeholder="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`${inputClass} pr-11`}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError(null);
+                  if (error) setError(null);
+                }}
+                className={`${inputClass} pr-11 ${passwordError ? inputErrorClass : inputNormalClass}`}
               />
               <button
                 type="button"
@@ -143,6 +189,12 @@ export function LoginForm() {
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
+            {passwordError ? (
+              <div className="mt-2 flex items-center gap-2 text-left text-xs font-medium text-rose-600">
+                <CircleOff className="size-4 shrink-0 text-rose-600" />
+                <span>{passwordError}</span>
+              </div>
+            ) : null}
           </div>
 
           <button

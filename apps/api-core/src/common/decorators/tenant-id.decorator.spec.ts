@@ -61,15 +61,34 @@ function routeHandlers(controller: new (...args: never[]) => unknown): string[] 
 }
 
 describe('tenant scoping on institution controllers (#166)', () => {
-  it.each([
-    ['InstitutionsTpoController', InstitutionsTpoController],
-    ['PlacementMatchController', PlacementMatchController],
-  ] as const)('%s is guarded and every route takes @TenantId()', (_name, controller) => {
-    expect(Reflect.getMetadata(GUARDS_METADATA, controller)).toContain(TenantScopeGuard);
-    const scoped = handlersWithTenantId(controller);
-    const routes = routeHandlers(controller);
+  it('InstitutionsTpoController is guarded and every route takes @TenantId()', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, InstitutionsTpoController)).toContain(
+      TenantScopeGuard,
+    );
+    const scoped = handlersWithTenantId(InstitutionsTpoController);
+    const routes = routeHandlers(InstitutionsTpoController);
     expect(routes.length).toBeGreaterThan(0);
     expect(routes.filter((name) => !scoped.has(name))).toEqual([]);
+  });
+
+  it('PlacementMatchController scopes institution match routes with @TenantId()', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, PlacementMatchController)).toContain(
+      TenantScopeGuard,
+    );
+    const scoped = handlersWithTenantId(PlacementMatchController);
+    const unscoped = routeHandlers(PlacementMatchController).filter((name) => !scoped.has(name));
+    // Multi-role endpoints (student/company/employer feedback, candidate search and bookmarks)
+    expect(unscoped.sort()).toEqual(
+      [
+        'getFeedbackSummary',
+        'listSavedCandidates',
+        'removeSavedCandidate',
+        'saveCandidate',
+        'searchStudents',
+        'submitEmployerFeedback',
+        'submitStudentFeedback',
+      ].sort(),
+    );
   });
 
   it('PlacementController scopes every route except the multi-role evidence reads', () => {
@@ -77,7 +96,17 @@ describe('tenant scoping on institution controllers (#166)', () => {
     const unscoped = routeHandlers(PlacementController).filter((name) => !scoped.has(name));
     // These also serve COMPANY / B2B_PARTNER / SUPER_ADMIN, who have no institution.
     expect(unscoped.sort()).toEqual(
-      ['getCandidateEvidenceVersion', 'listCandidateEvidenceVersions', 'meta'].sort(),
+      [
+        'getCandidateDemonstratedSkills',
+        'getCandidateEducation',
+        'getCandidateEvidenceProvenance',
+        'getCandidateEvidenceVersion',
+        'getCandidateSkillClaims',
+        'getCandidateSkillExplanation',
+        'listCandidateEvidenceVersions',
+        'meta',
+        'reviewCandidateEvidence',
+      ].sort(),
     );
   });
 });

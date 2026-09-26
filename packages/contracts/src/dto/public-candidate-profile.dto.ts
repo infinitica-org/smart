@@ -111,6 +111,10 @@ export const PublicCandidateProfileDtoSchema = z.object({
   competencyEvidenceSummaries: z.array(PublicCompetencyEvidenceSummarySchema).default([]),
   /** CN-T09 — echoes the owner's opt-in state so the frontend can label in-progress entries. */
   showInProgressItems: z.boolean().default(false),
+  /** T6 — list of sections hidden by student section privacy settings. */
+  hiddenSections: z.array(z.string()).default([]),
+  /** T10 — latest committed change timestamp relevant to the candidate profile. */
+  lastUpdatedAt: z.string().optional(),
   /** STU-02 — false when the student has turned employer messages off. */
   acceptsEmployerMessages: z.boolean().default(true),
 });

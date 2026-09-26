@@ -1,8 +1,9 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { FastifyRequest } from 'fastify';
+import { RedisService } from '../../platform/redis/redis.service.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 
 export interface RequestUser {
@@ -10,6 +11,11 @@ export interface RequestUser {
   readonly role: string;
   readonly inst: string | null;
   readonly companyId?: string | null;
+  readonly isDelegated?: boolean;
+  readonly actorId?: string;
+  readonly actorRole?: string;
+  readonly ticketId?: string;
+  readonly supportSessionId?: string;
 }
 
 @Injectable()
@@ -17,9 +23,10 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(Reflector) private readonly reflector: Reflector,
+    @Optional() @Inject(RedisService) private readonly redis?: RedisService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -37,9 +44,32 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      request.user = this.jwt.verify<RequestUser>(header.slice('Bearer '.length));
+      const decoded = this.jwt.verify<RequestUser>(header.slice('Bearer '.length));
+      if (decoded.isDelegated) {
+        if (!decoded.supportSessionId) {
+          throw new UnauthorizedException({
+            error: 'unauthorized',
+            message: 'Delegated session token is invalid.',
+            statusCode: 401,
+          });
+        }
+        if (this.redis) {
+          const sessionExists = await this.redis.get(`support_session:${decoded.supportSessionId}`);
+          if (!sessionExists) {
+            throw new UnauthorizedException({
+              error: 'unauthorized',
+              message: 'Delegated session has expired or been revoked.',
+              statusCode: 401,
+            });
+          }
+        }
+      }
+      request.user = decoded;
       return true;
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
       throw new UnauthorizedException({
         error: 'token_expired',
         message: 'Access token is invalid or expired.',

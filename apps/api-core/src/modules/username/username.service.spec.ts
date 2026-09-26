@@ -135,19 +135,45 @@ describe('UsernameService (CN-T09)', () => {
   });
 
   describe('getVisibility', () => {
-    it('returns the current visibility state', async () => {
+    it('returns the current visibility state including hiddenSections', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue({
         profileVisible: true,
         showInProgressItems: false,
+        hiddenSections: ['education', 'projects'],
       });
 
       const result = await service.getVisibility(userId);
 
-      expect(result).toEqual({ profileVisible: true, showInProgressItems: false });
+      expect(result).toEqual({
+        profileVisible: true,
+        showInProgressItems: false,
+        hiddenSections: ['education', 'projects'],
+      });
     });
   });
 
   describe('updateVisibility', () => {
+    it('persists hiddenSections array when updated', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        usernameStatus: 'ACTIVE',
+        profileVisible: true,
+      });
+
+      const result = await service.updateVisibility(userId, {
+        profileVisible: true,
+        hiddenSections: ['skills'],
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: expect.objectContaining({
+          profileVisible: true,
+          hiddenSections: ['skills'],
+        }),
+      });
+      expect(result.hiddenSections).toEqual(['skills']);
+    });
+
     it('activates a RESERVED username exactly when visibility is first turned on', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue({
         usernameStatus: 'RESERVED',
@@ -173,11 +199,11 @@ describe('UsernameService (CN-T09)', () => {
         profileVisible: true,
       });
 
-      await service.updateVisibility(userId, { profileVisible: true, showInProgressItems: true });
+      await service.updateVisibility(userId, { profileVisible: true, hiddenSections: ['skills'] });
 
       const call = prisma.user.update.mock.calls[0][0];
       expect(call.data).not.toHaveProperty('usernameActivatedAt');
-      expect(call.data.showInProgressItems).toBe(true);
+      expect(call.data.hiddenSections).toEqual(['skills']);
     });
 
     it('turning visibility off never de-activates an already-active username', async () => {

@@ -114,7 +114,12 @@ describe('GET /admin/audit-logs/export (S6-VV-101)', () => {
         yield auditExportLine(row(), 'csv');
       })(),
     });
-    const controller = new InstitutionsAdminController({} as never, { prepare } as never);
+    const controller = new InstitutionsAdminController(
+      {} as never,
+      {} as never,
+      {} as never,
+      { prepare } as never,
+    );
     const headers: Record<string, string> = {};
     let body: NodeJS.ReadableStream | undefined;
     const reply = {
@@ -146,7 +151,12 @@ describe('GET /admin/audit-logs/export (S6-VV-101)', () => {
 
   it('rejects an unknown format before touching the database', async () => {
     const prepare = vi.fn();
-    const controller = new InstitutionsAdminController({} as never, { prepare } as never);
+    const controller = new InstitutionsAdminController(
+      {} as never,
+      {} as never,
+      {} as never,
+      { prepare } as never,
+    );
 
     await expect(
       controller.exportAuditLogs({ format: 'xlsx' }, { sub: 'admin-1' } as never, {} as never),

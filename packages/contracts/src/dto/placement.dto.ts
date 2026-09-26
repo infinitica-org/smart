@@ -17,6 +17,8 @@ import { AssessmentResultSchema } from '../domain/evidence/assessment-result.js'
 import { SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateSchema, IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 import { PublicCompetencyEvidenceSummarySchema } from './public-candidate-profile.dto.js';
+import { CandidateEducationSchema } from './candidate-profile.dto.js';
+import { EvidenceProvenanceItemDtoSchema } from './evidence.dto.js';
 import { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
@@ -729,6 +731,69 @@ export const CohortReadinessRowSchema = z.object({
 });
 export type CohortReadinessRow = z.infer<typeof CohortReadinessRowSchema>;
 
+/* -------------------- employer candidate views (T2/T3) -------------------- */
+
+export const PlacementCandidateEducationDtoSchema = CandidateEducationSchema.extend({
+  relatedEvidence: z.array(EvidenceProvenanceItemDtoSchema).default([]),
+});
+export type PlacementCandidateEducationDto = z.infer<typeof PlacementCandidateEducationDtoSchema>;
+
+export const CandidateEducationEvidenceResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  education: z.array(PlacementCandidateEducationDtoSchema),
+});
+export type CandidateEducationEvidenceResponse = z.infer<
+  typeof CandidateEducationEvidenceResponseSchema
+>;
+
+export const CandidateSkillClaimStatusDtoSchema = z.object({
+  claimId: UuidSchema,
+  studentId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  skillName: z.string(),
+  category: z.string().optional(),
+  status: SkillClaimStatusSchema,
+  claimedProficiency: SkillProficiencySchema,
+  verifiedProficiency: SkillProficiencySchema.nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type CandidateSkillClaimStatusDto = z.infer<typeof CandidateSkillClaimStatusDtoSchema>;
+
+export const CandidateSkillClaimsResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  claims: z.array(CandidateSkillClaimStatusDtoSchema),
+});
+export type CandidateSkillClaimsResponse = z.infer<typeof CandidateSkillClaimsResponseSchema>;
+
+export const PlacementCandidateDemonstratedSkillDtoSchema = z.object({
+  claimId: UuidSchema.optional(),
+  studentId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  skillName: z.string(),
+  category: z.string().optional(),
+  status: SkillClaimStatusSchema,
+  claimedProficiency: SkillProficiencySchema,
+  verifiedProficiency: SkillProficiencySchema.nullable().optional(),
+  evidenceSummary: z.record(z.string(), z.unknown()).nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type PlacementCandidateDemonstratedSkillDto = z.infer<
+  typeof PlacementCandidateDemonstratedSkillDtoSchema
+>;
+
+export const CandidateDemonstratedSkillsResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  skills: z.array(PlacementCandidateDemonstratedSkillDtoSchema),
+});
+export type CandidateDemonstratedSkillsResponse = z.infer<
+  typeof CandidateDemonstratedSkillsResponseSchema
+>;
+
 /* --------------------------- match quality feedback ------------------------- */
 
 export const MatchFeedbackTargetTypeSchema = z.enum(['STUDENT', 'EMPLOYER']);
@@ -759,3 +824,65 @@ export const MatchFeedbackResponseSchema = z.object({
   status: z.literal('RECORDED'),
 });
 export type MatchFeedbackResponse = z.infer<typeof MatchFeedbackResponseSchema>;
+
+export const MatchFeedbackSummaryDtoSchema = z.object({
+  totalFeedbacks: z.number().int().nonnegative(),
+  relevantCount: z.number().int().nonnegative(),
+  notRelevantCount: z.number().int().nonnegative(),
+  satisfactionRate: z.number().min(0).max(1),
+  ratingBreakdown: z.record(MatchFeedbackRatingSchema, z.number().int().nonnegative()),
+  commonIrrelevantReasons: z.array(
+    z.object({
+      reason: z.string(),
+      count: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type MatchFeedbackSummaryDto = z.infer<typeof MatchFeedbackSummaryDtoSchema>;
+
+/* --------------------------- saved candidates (I401) ------------------------- */
+
+export const SavedCandidateDtoSchema = z.object({
+  id: UuidSchema,
+  savedBy: UuidSchema,
+  studentId: UuidSchema,
+  openingId: UuidSchema.nullable().optional(),
+  note: z.string().max(2000).nullable().optional(),
+  savedAt: IsoDateTimeSchema,
+  student: z
+    .object({
+      id: UuidSchema,
+      fullName: z.string(),
+      email: z.string().optional(),
+      primaryTrackCode: TrackCodeSchema.optional(),
+      highestLevelCleared: LevelNumberSchema.optional(),
+      headlineTier: CertifiableTierSchema.optional(),
+    })
+    .optional(),
+});
+export type SavedCandidateDto = z.infer<typeof SavedCandidateDtoSchema>;
+
+export const SaveCandidateRequestSchema = z.object({
+  studentId: UuidSchema,
+  openingId: UuidSchema.optional(),
+  note: z.string().max(2000).optional(),
+});
+export type SaveCandidateRequest = z.infer<typeof SaveCandidateRequestSchema>;
+
+export const ListSavedCandidatesResponseSchema = z.object({
+  savedCandidates: z.array(SavedCandidateDtoSchema),
+  total: z.number().int(),
+});
+export type ListSavedCandidatesResponse = z.infer<typeof ListSavedCandidatesResponseSchema>;
+
+export const SearchStudentsQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  skillCode: z.string().max(50).optional(),
+  university: z.string().max(200).optional(),
+  gradYear: z.string().max(10).optional(),
+  availability: z.string().max(50).optional(),
+  minLevel: z.string().max(50).optional(),
+  verificationType: z.string().max(50).optional(),
+  scopedJobId: z.string().max(50).optional(),
+});
+export type SearchStudentsQuery = z.infer<typeof SearchStudentsQuerySchema>;

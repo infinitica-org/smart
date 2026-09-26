@@ -18,6 +18,7 @@ export type SkillEvidenceInferenceOutcomeKind = z.infer<
 export const SkillInferenceProvenanceSchema = z.object({
   ruleSetVersion: z.string().max(40),
   taxonomyVersion: z.string().max(40),
+  rubricVersion: z.string().max(40).optional(),
   capabilityModelVersion: z.string().max(80).optional(),
   assessmentBlueprintRef: z.string().max(120).optional(),
   interviewBlueprintRef: z.string().max(120).optional(),
