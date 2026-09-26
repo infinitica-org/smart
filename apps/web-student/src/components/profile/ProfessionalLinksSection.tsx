@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isSmartApiError, queryKeys } from '@smart/api-client';
 import { useQueryClient } from '@smart/ui';
-import { ExternalLink, X, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import {
   applyServerDraft,
   buildProfessionalLinksSavePayload,
