@@ -46,7 +46,8 @@ describe('PlacementCalendarWorkspace', () => {
     render(<PlacementCalendarWorkspace />);
 
     expect(await screen.findByText('Upcoming Drives')).toBeDefined();
-    expect(screen.getAllByText('Infinitica Labs').length).toBeGreaterThan(0);
+    // The heading renders before the mocked fetch resolves; wait for the drive itself.
+    expect((await screen.findAllByText('Infinitica Labs')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0);
   });
 
