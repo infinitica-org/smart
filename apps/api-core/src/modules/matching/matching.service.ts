@@ -43,8 +43,8 @@ import { InstitutionsService } from '../institutions/institutions.service.js';
 import type { CompetencyStatus } from '@smart/contracts';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import {
-  EMPLOYER_VISIBLE_STUDENT_SQL,
-  filterEmployerVisibleStudentIds,
+  EMPLOYER_DISCOVERABLE_STUDENT_SQL,
+  filterEmployerDiscoverableStudentIds,
   studentUnavailableToEmployers,
 } from '../../common/employer-visibility.js';
 import { QlixSmartAssessmentSchema } from '../evaluation/qlix-client.js';
@@ -175,7 +175,7 @@ function buildEligibleStudentsQuery(
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
     Prisma.sql`u.role = 'STUDENT'`,
-    EMPLOYER_VISIBLE_STUDENT_SQL,
+    EMPLOYER_DISCOVERABLE_STUDENT_SQL,
     Prisma.sql`EXISTS (SELECT 1 FROM skill_claims sc_any WHERE sc_any.student_id = u.id AND sc_any.status = 'VERIFIED')`,
   ];
   if (request.batchIds.length) {
@@ -386,7 +386,7 @@ export class MatchingService {
     shortlist: ShortlistDto | null,
   ): Promise<ShortlistDto | null> {
     if (!shortlist) return null;
-    const visible = await filterEmployerVisibleStudentIds(
+    const visible = await filterEmployerDiscoverableStudentIds(
       this.prisma,
       shortlist.candidates.map((row) => row.studentId),
     );
@@ -414,7 +414,7 @@ export class MatchingService {
     const shortlist = ShortlistDtoSchema.parse(run.resultSnapshot);
     const candidate = shortlist.candidates.find((row) => row.studentId === studentId);
     if (candidate) {
-      const visible = await filterEmployerVisibleStudentIds(this.prisma, [studentId]);
+      const visible = await filterEmployerDiscoverableStudentIds(this.prisma, [studentId]);
       if (!visible.has(studentId)) throw studentUnavailableToEmployers();
     }
     if (!candidate) {
@@ -1354,9 +1354,8 @@ export class MatchingService {
     const conditions: Prisma.Sql[] = [
       Prisma.sql`u.role = 'STUDENT'`,
       Prisma.sql`u.profile_visible = TRUE`,
-      // I402 — deactivated or held students must never appear in employer search.
-      Prisma.sql`u.deactivated_at IS NULL`,
-      Prisma.sql`u.held_at IS NULL`,
+      // I402 / S6-VV-113 — deactivated, held or opted-out students never appear in employer search.
+      EMPLOYER_DISCOVERABLE_STUDENT_SQL,
     ];
 
     if (user.inst) {

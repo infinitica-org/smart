@@ -7,6 +7,7 @@ import type {
   DataRequestResponse,
   DeactivateAccountRequest,
   DeactivateAccountResponse,
+  DiscoverabilityPreference,
   MessagingPreferenceResponse,
   PersonalInfoResponse,
   UpdateMessagingPreferenceRequest,
@@ -178,6 +179,40 @@ export class AccountService {
       },
     });
     return { allowEmployerMessages: updated.allowEmployerMessages };
+  }
+
+  async getDiscoverability(userId: string): Promise<DiscoverabilityPreference> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { discoverableToEmployers: true },
+    });
+    return { discoverableToEmployers: user.discoverableToEmployers };
+  }
+
+  /** S6-VV-113 — takes effect on the next match run and on every re-served shortlist. */
+  async updateDiscoverability(
+    userId: string,
+    body: DiscoverabilityPreference,
+  ): Promise<DiscoverabilityPreference> {
+    const before = await this.getDiscoverability(userId);
+    if (before.discoverableToEmployers === body.discoverableToEmployers) return before;
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { discoverableToEmployers: body.discoverableToEmployers },
+      select: { discoverableToEmployers: true },
+    });
+    await this.auditPublisher.record({
+      actorId: userId,
+      action: 'account.discoverability_changed',
+      resourceType: 'user',
+      resourceId: userId,
+      reasonCode: null,
+      metadata: {
+        prior: { discoverableToEmployers: before.discoverableToEmployers },
+        next: { discoverableToEmployers: updated.discoverableToEmployers },
+      },
+    });
+    return { discoverableToEmployers: updated.discoverableToEmployers };
   }
 
   /** Idempotent: repeating the call keeps the original `deactivatedAt` and writes no second audit row. */

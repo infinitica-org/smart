@@ -120,6 +120,7 @@ import type {
   UpdateProfileVisibilityRequest,
   UpdatePersonalInfoRequest,
   UpdateMessagingPreferenceRequest,
+  DiscoverabilityPreference,
   DeactivateAccountRequest,
   CreateDataRequest,
   UpdateProfileViewSettingRequest,
@@ -337,6 +338,7 @@ import {
   ProfileVisibilityResponseSchema,
   PersonalInfoResponseSchema,
   MessagingPreferenceResponseSchema,
+  DiscoverabilityPreferenceSchema,
   DeactivateAccountResponseSchema,
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
@@ -641,6 +643,20 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/messaging'),
         body,
         schema: MessagingPreferenceResponseSchema,
+      }),
+
+    /** S6-VV-113 — whether employers can find me in match runs and candidate search. */
+    getDiscoverability: () =>
+      client.get(prefixed('/users/me/discoverability'), {
+        schema: DiscoverabilityPreferenceSchema,
+      }),
+
+    updateDiscoverability: (body: DiscoverabilityPreference) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/discoverability'),
+        body,
+        schema: DiscoverabilityPreferenceSchema,
       }),
 
     deactivateAccount: (body: DeactivateAccountRequest) =>

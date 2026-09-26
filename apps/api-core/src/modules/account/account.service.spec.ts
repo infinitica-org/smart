@@ -24,6 +24,7 @@ describe('AccountService (STU-02)', () => {
           email: 'ada@example.com',
           graduationYear: 2027,
           allowEmployerMessages: true,
+          discoverableToEmployers: true,
           deactivatedAt: null,
           onboardingDetails: {
             firstName: 'Ada',
@@ -180,6 +181,37 @@ describe('AccountService (STU-02)', () => {
         allowEmployerMessages: true,
       });
       expect(result).toEqual({ allowEmployerMessages: true });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateDiscoverability (S6-VV-113)', () => {
+    it('opts out of employer discovery and audits prior and next', async () => {
+      const result = await service.updateDiscoverability(userId, {
+        discoverableToEmployers: false,
+      });
+      expect(result).toEqual({ discoverableToEmployers: false });
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { discoverableToEmployers: false } }),
+      );
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: userId,
+          action: 'account.discoverability_changed',
+          metadata: {
+            prior: { discoverableToEmployers: true },
+            next: { discoverableToEmployers: false },
+          },
+        }),
+      );
+    });
+
+    it('is idempotent: repeating the current choice writes and audits nothing', async () => {
+      const result = await service.updateDiscoverability(userId, {
+        discoverableToEmployers: true,
+      });
+      expect(result).toEqual({ discoverableToEmployers: true });
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(auditPublisher.record).not.toHaveBeenCalled();
     });

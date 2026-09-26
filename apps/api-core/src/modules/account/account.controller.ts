@@ -4,6 +4,7 @@ import {
   API_PREFIX,
   CreateDataRequestSchema,
   DeactivateAccountRequestSchema,
+  DiscoverabilityPreferenceSchema,
   UpdateMessagingPreferenceRequestSchema,
   UpdatePersonalInfoRequestSchema,
 } from '@smart/contracts';
@@ -47,6 +48,21 @@ export class AccountController {
     return this.service.updateMessagingPreference(
       user.sub,
       UpdateMessagingPreferenceRequestSchema.parse(body),
+    );
+  }
+
+  @Get('discoverability')
+  @ApiOperation({ summary: 'Get whether employers can discover me (S6-VV-113).' })
+  getDiscoverability(@CurrentUser() user: RequestUser) {
+    return this.service.getDiscoverability(user.sub);
+  }
+
+  @Put('discoverability')
+  @ApiOperation({ summary: 'Opt in or out of employer discovery (S6-VV-113).' })
+  updateDiscoverability(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.service.updateDiscoverability(
+      user.sub,
+      DiscoverabilityPreferenceSchema.parse(body),
     );
   }
 

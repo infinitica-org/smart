@@ -498,6 +498,9 @@ model User {
   showInProgressItems    Boolean                   @default(false) @map("show_in_progress_items")
   /// STU-02 — student-controlled switch for employer-initiated messages.
   allowEmployerMessages  Boolean                   @default(true) @map("allow_employer_messages")
+  /// S6-VV-113 (#552) — false hides the student from employer discovery (match runs, shortlists,
+  /// company search). Separate from `profileVisible`, which only controls the public profile link.
+  discoverableToEmployers Boolean                  @default(true) @map("discoverable_to_employers")
   /// STU-02 — self-service deactivation; blocks sign-in and hides the profile until cleared.
   deactivatedAt          DateTime?                 @map("deactivated_at") @db.Timestamptz(6)
   /// STU-03 — student opt-in: show the count of employer profile views on the dashboard.
