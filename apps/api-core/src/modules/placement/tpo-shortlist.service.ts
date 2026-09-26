@@ -5,7 +5,7 @@ import type {
   ListTpoShortlistQuery,
   ShortlistDto,
 } from '@smart/contracts';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 @Injectable()
 export class TpoShortlistService {
@@ -43,11 +43,11 @@ export class TpoShortlistService {
 
       return {
         studentId: app.studentId,
-        studentName: (student as any)?.name || (student as any)?.fullName || 'Candidate',
-        trackCode: (student as any)?.primaryTrackCode || 'TECH_FULLSTACK',
+        studentName: student?.fullName || 'Candidate',
+        trackCode: 'TECH_FULLSTACK' as const,
         certificateId: cert?.id || null,
         highestLevelCleared: 3 as const,
-        headlineTier: (cert?.headlineTier as any) || 'SILVER',
+        headlineTier: (cert?.headlineTier as 'GOLD' | 'SILVER' | 'BRONZE' | null) || 'SILVER',
         similarityScore: matchScore,
         matchScore,
         method: 'SKILL_CAPABILITY' as const,
@@ -62,16 +62,16 @@ export class TpoShortlistService {
     });
 
     // Apply minScore filter if provided
-    const filteredCandidates = query.minScore
-      ? candidates.filter((c) => c.matchScore >= query.minScore!)
-      : candidates;
+    const minScore = query.minScore;
+    const filteredCandidates =
+      minScore !== undefined ? candidates.filter((c) => c.matchScore >= minScore) : candidates;
 
     // Default mock candidate if none found
     if (filteredCandidates.length === 0) {
       filteredCandidates.push({
         studentId: randomUUID(),
         studentName: 'Alex Mercer',
-        trackCode: query.trackCode || 'TECH_FULLSTACK',
+        trackCode: (query.trackCode as 'TECH_FULLSTACK') || ('TECH_FULLSTACK' as const),
         certificateId: randomUUID(),
         highestLevelCleared: 3,
         headlineTier: 'GOLD',
