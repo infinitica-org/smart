@@ -15,6 +15,7 @@ const { users, signOut } = vi.hoisted(() => ({
     updateMessagingPreference: vi.fn(),
     listDataRequests: vi.fn(),
     createDataRequest: vi.fn(),
+    downloadDataExport: vi.fn(),
     deactivateAccount: vi.fn(),
   },
   signOut: vi.fn(),
@@ -192,6 +193,45 @@ describe('DataRequestsCard', () => {
     );
     expect(await screen.findByText('Request submitted.')).toBeTruthy();
     expect(await screen.findByText('OPEN')).toBeTruthy();
+  });
+
+  it('requests an export without details and downloads a finished one (S6-VV-115)', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    users.createDataRequest.mockResolvedValue({ id: 'x1' });
+    users.listDataRequests.mockResolvedValue({
+      requests: [
+        {
+          id: 'x0',
+          type: 'EXPORT',
+          status: 'COMPLETED',
+          details: '',
+          createdAt: '2026-09-24T00:00:00.000Z',
+          resolvedAt: '2026-09-24T00:01:00.000Z',
+          exportAvailableUntil: '2026-10-01T00:01:00.000Z',
+        },
+      ],
+    });
+    users.downloadDataExport.mockResolvedValue({
+      bundleUrl: 'https://signed/bundle.json',
+      files: [{ objectKey: 'evidence/u/cv.pdf', url: 'https://signed/cv.pdf' }],
+      linksExpireInSeconds: 900,
+    });
+    renderWithClient(<DataRequestsCard />);
+
+    fireEvent.change(await screen.findByLabelText('Request type'), {
+      target: { value: 'EXPORT' },
+    });
+    expect(screen.queryByLabelText('Details')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Submit request' }));
+    await waitFor(() =>
+      expect(users.createDataRequest).toHaveBeenCalledWith({ type: 'EXPORT', details: '' }),
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith('https://signed/bundle.json', '_blank', 'noopener'),
+    );
+    expect(await screen.findByRole('link', { name: 'cv.pdf' })).toBeTruthy();
   });
 });
 

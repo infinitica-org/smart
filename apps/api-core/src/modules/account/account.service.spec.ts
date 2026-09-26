@@ -218,6 +218,31 @@ describe('AccountService (STU-02)', () => {
   });
 
   describe('data requests', () => {
+    it('queues an export without asking for details (S6-VV-115)', async () => {
+      const exportQueue = { add: vi.fn().mockResolvedValue(undefined) };
+      service = new AccountService(prisma, auditPublisher, auth, exportQueue as never);
+
+      const result = await service.createDataRequest(userId, { type: 'EXPORT', details: '' });
+
+      expect(result.type).toBe('EXPORT');
+      expect(exportQueue.add).toHaveBeenCalledWith(
+        'build',
+        { requestId: result.id },
+        { jobId: result.id },
+      );
+    });
+
+    it('refuses a second export within a day of the last one (S6-VV-115)', async () => {
+      prisma.dataSubjectRequest.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'recent', status: 'COMPLETED' });
+
+      await expect(
+        service.createDataRequest(userId, { type: 'EXPORT', details: '' }),
+      ).rejects.toMatchObject({ response: { error: 'export_rate_limited' }, status: 429 });
+      expect(prisma.dataSubjectRequest.create).not.toHaveBeenCalled();
+    });
+
     it('creates an OPEN request and audits it', async () => {
       const result = await service.createDataRequest(userId, {
         type: 'DELETION',

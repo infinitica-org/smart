@@ -81,6 +81,8 @@ import type {
   RepoLanguagesRequest,
   InstitutionStaffRole,
   ListActiveSessionsQuery,
+  ListAdminDataRequestsQuery,
+  ResolveDataRequest,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
@@ -332,6 +334,8 @@ import {
   DeactivateAccountResponseSchema,
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
+  DataExportDownloadSchema,
+  AdminDataRequestDtoSchema,
   StudentDashboardSummarySchema,
   StudentReadinessSummarySchema,
   ProfileViewSettingSchema,
@@ -650,6 +654,12 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/data-requests'),
         body,
         schema: DataRequestResponseSchema,
+      }),
+
+    /** S6-VV-115 — fresh short-lived links to a finished export. */
+    downloadDataExport: (requestId: string) =>
+      client.get(prefixed(`/users/me/data-requests/${requestId}/download`), {
+        schema: DataExportDownloadSchema,
       }),
 
     listWorkExperiences: () =>
@@ -1036,6 +1046,31 @@ export function onboardingApi(client: SmartApiClient) {
 
     revokeSession: (sessionId: string, body: TenantActionReason) =>
       client.post<void>(prefixed(`/admin/sessions/${sessionId}/revoke`), body),
+
+    /** S6-VV-116 — the data-subject request queue. */
+    listAdminDataRequests: (query?: Partial<ListAdminDataRequestsQuery>) =>
+      client.get(prefixed('/admin/data-requests'), {
+        schema: z.array(AdminDataRequestDtoSchema),
+        query: {
+          type: query?.type,
+          status: query?.status,
+          openOnly: query?.openOnly === undefined ? undefined : String(query.openOnly),
+        },
+      }),
+
+    startDataRequestReview: (requestId: string) =>
+      client.post(prefixed(`/admin/data-requests/${requestId}/start-review`), undefined, {
+        schema: AdminDataRequestDtoSchema,
+      }),
+
+    resolveDataRequest: (
+      requestId: string,
+      outcome: 'complete' | 'reject' | 'erase',
+      body: ResolveDataRequest,
+    ) =>
+      client.post(prefixed(`/admin/data-requests/${requestId}/${outcome}`), body, {
+        schema: AdminDataRequestDtoSchema,
+      }),
 
     viewCandidateProfile: (userId: string, body: ViewCandidateRequest) =>
       client.post(prefixed(`/admin/students/${userId}/profile`), body, {

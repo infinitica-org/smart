@@ -281,6 +281,8 @@ enum NotificationKind {
   TRUST_ENFORCEMENT
   APPLICATION
   MESSAGE
+  /// S6-VV-115 — account and privacy events (data export ready, etc.).
+  ACCOUNT
 }
 
 enum ProjectStatus {
@@ -2714,6 +2716,8 @@ model TrustReport {
 enum DataSubjectRequestType {
   CORRECTION
   DELETION
+  /// S6-VV-115 (#554) — a copy of my data, fulfilled automatically.
+  EXPORT
 }
 
 enum DataSubjectRequestStatus {
@@ -2733,8 +2737,15 @@ model DataSubjectRequest {
   details    String
   createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   resolvedAt DateTime?                @map("resolved_at") @db.Timestamptz(6)
+  /// S6-VV-115 — storage key of the finished EXPORT bundle.
+  exportKey  String?                  @map("export_key")
+  /// S6-VV-116 — admin handling: first response (for the SLA), the note shown to the student, who closed it.
+  firstRespondedAt DateTime? @map("first_responded_at") @db.Timestamptz(6)
+  resolution       String?
+  resolvedById     String?   @map("resolved_by_id") @db.Uuid
 
   @@index([userId, type, status])
+  @@index([status, createdAt])
   @@map("data_subject_requests")
 }
 

@@ -1,4 +1,6 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { ConflictException, HttpException, Inject, Injectable, Optional } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import type {
   CreateDataRequest,
   DataRequestListResponse,
@@ -13,7 +15,10 @@ import type {
 import type { Prisma } from '../../generated/prisma/index.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { DSR_EXPORT_QUEUE } from '../../platform/queue/queue.names.js';
 import { AuthService } from '../auth/auth.service.js';
+import { exportAvailableUntil } from './data-export.service.js';
+import type { DsrExportJobPayload } from './dsr-export.processor.js';
 
 const OPEN_STATUSES = ['OPEN', 'IN_REVIEW'] as const;
 
@@ -38,14 +43,19 @@ function pickAudited(info: PersonalInfoResponse) {
   };
 }
 
-function toDataRequest(row: {
+/** S6-VV-115 — one export per day: a new EXPORT within 24h of the last finished one is refused. */
+const EXPORT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+export function toDataRequest(row: {
   id: string;
-  type: 'CORRECTION' | 'DELETION';
+  type: 'CORRECTION' | 'DELETION' | 'EXPORT';
   status: 'OPEN' | 'IN_REVIEW' | 'COMPLETED' | 'REJECTED';
   details: string;
   createdAt: Date;
   resolvedAt: Date | null;
+  resolution?: string | null;
 }): DataRequestResponse {
+  const until = exportAvailableUntil(row);
   return {
     id: row.id,
     type: row.type,
@@ -53,6 +63,8 @@ function toDataRequest(row: {
     details: row.details,
     createdAt: row.createdAt.toISOString(),
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    exportAvailableUntil: until && until.getTime() > Date.now() ? until.toISOString() : null,
+    resolution: row.resolution ?? null,
   };
 }
 
@@ -63,6 +75,9 @@ export class AccountService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AuthService) private readonly auth: AuthService,
+    @Optional()
+    @InjectQueue(DSR_EXPORT_QUEUE)
+    private readonly exportQueue?: Queue<DsrExportJobPayload>,
   ) {}
 
   async getPersonalInfo(userId: string): Promise<PersonalInfoResponse> {
@@ -213,9 +228,14 @@ export class AccountService {
         statusCode: 409,
       });
     }
+    if (body.type === 'EXPORT') await this.assertExportCooldown(userId);
     const row = await this.prisma.dataSubjectRequest.create({
       data: { userId, type: body.type, details: body.details },
     });
+    // An export needs no reviewer; the job id makes a double enqueue a no-op.
+    if (row.type === 'EXPORT') {
+      await this.exportQueue?.add('build', { requestId: row.id }, { jobId: row.id });
+    }
     await this.auditPublisher.record({
       actorId: userId,
       action: 'data_request.created',
@@ -225,5 +245,26 @@ export class AccountService {
       metadata: { type: row.type },
     });
     return toDataRequest(row);
+  }
+
+  private async assertExportCooldown(userId: string): Promise<void> {
+    const recent = await this.prisma.dataSubjectRequest.findFirst({
+      where: {
+        userId,
+        type: 'EXPORT',
+        status: 'COMPLETED',
+        resolvedAt: { gte: new Date(Date.now() - EXPORT_COOLDOWN_MS) },
+      },
+    });
+    if (recent) {
+      throw new HttpException(
+        {
+          error: 'export_rate_limited',
+          message: 'You can request one data export per day. Download your latest one instead.',
+          statusCode: 429,
+        },
+        429,
+      );
+    }
   }
 }
