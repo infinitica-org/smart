@@ -155,3 +155,37 @@ export type Report = z.infer<typeof ReportSchema>;
 
 /** Open reports on one job that trigger moderation review. */
 export const REPORT_ESCALATION_THRESHOLD = 3;
+
+/* ------------------------- admin report list (Th6-430) ------------------------- */
+
+export const REPORT_TARGET_TYPES = ['JOB', 'MESSAGE'] as const;
+export const ReportTargetTypeSchema = z.enum(REPORT_TARGET_TYPES);
+export const REPORT_STATUSES = ['OPEN', 'REVIEWING', 'RESOLVED', 'DISMISSED'] as const;
+export const ReportStatusSchema = z.enum(REPORT_STATUSES);
+
+export const ListAdminReportsQuerySchema = z.object({
+  targetType: ReportTargetTypeSchema.optional(),
+  status: ReportStatusSchema.optional(),
+  /** Reports filed on or after / before these instants. */
+  from: IsoDateTimeSchema.optional(),
+  to: IsoDateTimeSchema.optional(),
+  cursor: z.string().min(1).max(300).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+export type ListAdminReportsQuery = z.infer<typeof ListAdminReportsQuerySchema>;
+
+/** One row of the moderation queue. Never carries the reported content itself. */
+export const AdminReportRowSchema = z.object({
+  id: UuidSchema,
+  targetType: ReportTargetTypeSchema,
+  reason: ReportReasonSchema,
+  status: ReportStatusSchema,
+  createdAt: IsoDateTimeSchema,
+});
+export type AdminReportRow = z.infer<typeof AdminReportRowSchema>;
+
+export const ListAdminReportsResponseSchema = z.object({
+  reports: z.array(AdminReportRowSchema),
+  nextCursor: z.string().nullable(),
+});
+export type ListAdminReportsResponse = z.infer<typeof ListAdminReportsResponseSchema>;

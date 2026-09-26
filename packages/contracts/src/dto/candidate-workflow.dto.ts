@@ -86,6 +86,9 @@ export const ConversionMetricsQuerySchema = z.object({
 });
 export type ConversionMetricsQuery = z.infer<typeof ConversionMetricsQuerySchema>;
 
+/** A rate over fewer applicants than this is noise, so the server withholds it. */
+export const CONVERSION_MIN_SAMPLE = 5;
+
 const ConversionRateSchema = z.object({
   /** Applications that reached the first stage. */
   entered: z.number().int().min(0),
