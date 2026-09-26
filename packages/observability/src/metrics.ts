@@ -41,6 +41,16 @@ export const httpRequestsTotal = new Counter({
   registers: [registry],
 });
 
+/* ------------------------------- file scanning ------------------------------ */
+
+/** S6-VV-120 — upload malware scans by outcome (clean / infected / error). */
+export const fileScansTotal = new Counter({
+  name: 'smart_file_scans_total',
+  help: 'Upload malware scans by result.',
+  labelNames: ['result'] as const,
+  registers: [registry],
+});
+
 /* ------------------------------ rate limiting ----------------------------- */
 
 export const rateLimitRejections = new Counter({

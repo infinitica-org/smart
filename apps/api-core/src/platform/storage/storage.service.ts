@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  GetBucketEncryptionCommand,
   GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
@@ -12,8 +13,40 @@ import {
 import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env.js';
+import { assertFileClean } from './file-scanner.js';
 
 const SIGNED_URL_TTL_SECONDS = 15 * 60;
+
+/**
+ * S6-VV-119 — explicit SSE on server-side writes, as defence in depth next to the bucket default.
+ * Browser uploads (presigned PUT) send no SSE header: the bucket default encrypts them, which keeps
+ * the presigner free of extra signed headers.
+ */
+export function serverSideEncryption(): Pick<PutObjectCommandInput, 'ServerSideEncryption'> {
+  return env.S3_ENCRYPTION === 'required' ? { ServerSideEncryption: 'AES256' } : {};
+}
+
+/** S6-VV-119 — refuse to run with encryption required but the bucket not encrypting by default. */
+export async function assertBucketEncrypted(
+  client: Pick<S3Client, 'send'>,
+  bucket: string,
+): Promise<void> {
+  let rules = 0;
+  try {
+    const result = await client.send(new GetBucketEncryptionCommand({ Bucket: bucket }));
+    rules = result.ServerSideEncryptionConfiguration?.Rules?.length ?? 0;
+  } catch {
+    rules = 0;
+  }
+  if (rules === 0) {
+    throw new Error(
+      `S3_ENCRYPTION=required but bucket "${bucket}" has no default encryption. Run ` +
+        '`mc encrypt set sse-s3 <alias>/' +
+        bucket +
+        '` (MinIO needs MINIO_KMS_SECRET_KEY) or set S3_ENCRYPTION=off.',
+    );
+  }
+}
 
 /**
  * Generic object storage over MinIO's S3-compatible API. The first real
@@ -44,6 +77,12 @@ export class StorageService implements OnModuleInit {
    */
   async onModuleInit(): Promise<void> {
     if (env.NODE_ENV === 'test') return;
+    await this.ensureBucket();
+    // Fail fast: an unencrypted bucket must not silently take uploads once encryption is required.
+    if (env.S3_ENCRYPTION === 'required') await assertBucketEncrypted(this.client, env.S3_BUCKET);
+  }
+
+  private async ensureBucket(): Promise<void> {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: env.S3_BUCKET }));
     } catch {
@@ -66,6 +105,8 @@ export class StorageService implements OnModuleInit {
     fileName: string;
     contentType: string;
   }): Promise<string> {
+    // S6-VV-120 — an infected file never reaches the bucket.
+    await assertFileClean(params.buffer, params.fileName);
     const objectKey = `${params.namespace}/${randomUUID()}-${sanitizeFileName(params.fileName)}`;
     await this.client.send(
       new PutObjectCommand({
@@ -73,6 +114,7 @@ export class StorageService implements OnModuleInit {
         Key: objectKey,
         Body: params.buffer,
         ContentType: params.contentType,
+        ...serverSideEncryption(),
       }),
     );
     return objectKey;
@@ -113,6 +155,7 @@ export class StorageService implements OnModuleInit {
         Key: params.objectKey,
         Body: params.buffer,
         ContentType: params.contentType,
+        ...serverSideEncryption(),
       }),
     );
   }

@@ -453,12 +453,13 @@ export class PlacementController {
     description: 'Unknown application, or owned by another institution.',
   })
   async patchApplicationStage(
+    @CurrentUser() user: RequestUser,
     @Param('applicationId') applicationId: string,
     @Body() body: unknown,
     @TenantId() institutionId: string,
   ): Promise<ApplicationDto> {
     const parsed = PatchApplicationStageRequestSchema.parse(body);
-    return this.service.patchApplicationStage(institutionId, applicationId, parsed.stage);
+    return this.service.patchApplicationStage(institutionId, applicationId, parsed.stage, user.sub);
   }
 
   @Get('applications/:applicationId/confidence')
@@ -496,10 +497,11 @@ export class PlacementController {
   })
   @ApiResponse({ status: 422, description: 'SE-T02 confidence result is missing or incomplete.' })
   async sendToCompany(
+    @CurrentUser() user: RequestUser,
     @Param('applicationId') applicationId: string,
     @TenantId() institutionId: string,
   ): Promise<ApplicationDto> {
-    return this.service.sendToCompany(institutionId, applicationId);
+    return this.service.sendToCompany(institutionId, applicationId, user.sub);
   }
 
   @Post('outcomes')

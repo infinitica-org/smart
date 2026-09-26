@@ -79,6 +79,16 @@ const EnvSchema = z.object({
   S3_BUCKET: z.string().default('smart'),
   S3_ACCESS_KEY: z.string().default('smart'),
   S3_SECRET_KEY: z.string().default('smartsecret'),
+  /**
+   * S6-VV-119 — `required`: every server-side write asks for SSE and boot fails unless the bucket has
+   * default encryption. Only switch it on after MinIO has a KMS key (docs/delivery/STORAGE_ENCRYPTION.md).
+   */
+  S3_ENCRYPTION: z.enum(['off', 'required']).default('off'),
+  /** S6-VV-120 — `required` scans every upload with clamd and refuses it if clamd is unreachable. */
+  FILE_SCAN: z.enum(['off', 'required']).default('off'),
+  CLAMD_HOST: z.string().default('clamav'),
+  CLAMD_PORT: z.coerce.number().int().positive().default(3310),
+  CLAMD_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   /**
    * CN-T01 GitHub identity/repo-picker proxy. Unauthenticated GitHub REST calls

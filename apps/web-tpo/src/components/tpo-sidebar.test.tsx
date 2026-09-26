@@ -25,10 +25,10 @@ afterEach(() => {
 });
 
 describe('TpoSidebar brand', () => {
-  it('shows the text wordmark logo', () => {
+  it('shows the SMART logo linking home', () => {
     renderSidebar();
     expect(screen.getByRole('link', { name: 'SMART home' }).getAttribute('href')).toBe('/');
-    expect(screen.getByRole('img', { name: 'SMART' })).toBeDefined();
+    expect(screen.getByRole('img', { name: 'SMART logo' })).toBeDefined();
   });
 });
 
