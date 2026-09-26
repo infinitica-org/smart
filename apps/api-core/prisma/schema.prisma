@@ -321,6 +321,7 @@ model Institution {
 
   users                User[]
   batches              Batch[]
+  campuses             Campus[]
   invitations          Invitation[]
   jobDescriptions      JobDescription[]
   jobOpenings          JobOpening[]
@@ -339,6 +340,9 @@ model Batch {
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   name          String
   code          String?
+  /// S6-VV-112 (#163) — the campus this cohort belongs to; students inherit it through the batch.
+  campusId      String?     @map("campus_id") @db.Uuid
+  campus        Campus?     @relation(fields: [campusId], references: [id], onDelete: SetNull)
   createdById   String      @map("created_by_id") @db.Uuid
   createdBy     User        @relation("BatchCreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -348,7 +352,28 @@ model Batch {
 
   @@unique([institutionId, name])
   @@index([institutionId])
+  @@index([campusId])
   @@map("batches")
+}
+
+/// S6-VV-112 (#163) — a physical campus of an institution. Exactly one per institution is primary
+/// (enforced in the service). Campuses are archived, never deleted, so old batches keep their campus.
+model Campus {
+  id            String      @id @default(uuid()) @db.Uuid
+  institutionId String      @map("institution_id") @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  code          String?
+  city          String?
+  isPrimary     Boolean     @default(false) @map("is_primary")
+  archivedAt    DateTime?   @map("archived_at") @db.Timestamptz(6)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  batches Batch[]
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+  @@map("campuses")
 }
 
 model Invitation {
