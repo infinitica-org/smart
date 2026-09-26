@@ -532,6 +532,9 @@ model User {
   matchFeedbacksReceived               MatchFeedback[]               @relation("MatchFeedbackStudent")
   savedCandidatesCreated               SavedCandidate[]              @relation("SavedCandidatesCreated")
   savedAsCandidate                     SavedCandidate[]              @relation("SavedCandidatesReceived")
+  recordingGrantsAsStudent             RecordingAccessGrant[]        @relation("RecordingGrantStudent")
+  recordingGrantsReceived              RecordingAccessGrant[]        @relation("RecordingGrantGrantee")
+  recordingGrantsGiven                 RecordingAccessGrant[]        @relation("RecordingGrantGrantor")
 
 
 
@@ -2920,5 +2923,26 @@ model ModerationHold {
   @@index([messageId])
   @@index([heldUntil, releasedAt])
   @@map("moderation_holds")
->>>>>>> origin/feat/sep25-re-engineering
+}
+
+/// UNI-04 (Th6-444) - explicit, expiring grant letting one university user see one interview recording.
+/// Default is deny: without an unexpired, unrevoked row here, university staff never get a recording.
+/// `recordingId` has no foreign key yet - the recording store does not exist.
+model RecordingAccessGrant {
+  id              String    @id @default(uuid()) @db.Uuid
+  recordingId     String    @map("recording_id") @db.Uuid
+  studentId       String    @map("student_id") @db.Uuid
+  student         User      @relation("RecordingGrantStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  grantedToUserId String    @map("granted_to_user_id") @db.Uuid
+  grantedTo       User      @relation("RecordingGrantGrantee", fields: [grantedToUserId], references: [id], onDelete: Cascade)
+  grantedById     String    @map("granted_by_id") @db.Uuid
+  grantedBy       User      @relation("RecordingGrantGrantor", fields: [grantedById], references: [id], onDelete: Cascade)
+  reason          String
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([recordingId, grantedToUserId])
+  @@index([studentId])
+  @@map("recording_access_grants")
 }

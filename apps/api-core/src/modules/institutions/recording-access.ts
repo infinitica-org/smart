@@ -1,13 +1,14 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 
 /**
  * Th6-444 — university staff never get interview recordings by default.
  *
- * There is no recording model or endpoint in the platform yet, and no grant table
- * (recording_access_grants). Until one exists this is default-deny: every caller that will one day
- * serve a recording must go through `canAccessRecording`, and the only place that decides is here.
+ * Default-deny: a university user gets a recording only through an unexpired, unrevoked
+ * `recording_access_grants` row naming them and that recording. Every caller that serves a recording
+ * must go through `canAccessRecording`; it is the only place that decides.
  */
 export interface RecordingRef {
   readonly id: string;
@@ -17,20 +18,37 @@ export interface RecordingRef {
 /** Roles that act for a university and therefore must never see a recording without a grant. */
 const UNIVERSITY_ROLES: readonly string[] = ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'];
 
-export function canAccessRecording(user: RequestUser, recording: RecordingRef): boolean {
+export async function canAccessRecording(
+  user: RequestUser,
+  recording: RecordingRef,
+  prisma: Pick<PrismaService, 'recordingAccessGrant'>,
+): Promise<boolean> {
   if (!UNIVERSITY_ROLES.includes(user.role)) return recording.studentId === user.sub;
-  // TODO: look up an unexpired recording_access_grants row for (recording, user) once that table exists.
-  return false;
+  const grant = await prisma.recordingAccessGrant.findFirst({
+    where: {
+      recordingId: recording.id,
+      studentId: recording.studentId,
+      grantedToUserId: user.sub,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
+  });
+  return grant !== null;
 }
 
 /** Throws 403 and records the denied attempt. Call before serving any recording. */
 export async function assertRecordingAccess(
   user: RequestUser,
   recording: RecordingRef,
-  audit: Pick<AuditPublisherService, 'record'>,
+  deps: {
+    prisma: Pick<PrismaService, 'recordingAccessGrant'>;
+    audit: Pick<AuditPublisherService, 'record'>;
+  },
   source: string,
 ): Promise<void> {
-  if (canAccessRecording(user, recording)) return;
+  if (await canAccessRecording(user, recording, deps.prisma)) return;
+  const { audit } = deps;
   await audit.record({
     actorId: user.sub,
     action: 'university.recording_access_denied',

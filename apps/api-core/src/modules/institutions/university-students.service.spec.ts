@@ -306,12 +306,17 @@ describe('message a student (Th6-442)', () => {
 describe('interview recordings default-deny (Th6-444)', () => {
   const recording = { id: randomUUID(), studentId };
 
-  it('denies university staff and audits the attempt', async () => {
+  function grantDb(grant: unknown) {
+    return { recordingAccessGrant: { findFirst: vi.fn(async () => grant) } };
+  }
+
+  it('denies university staff with no grant and audits the attempt', async () => {
     const audit = { record: vi.fn(async () => undefined) };
-    expect(canAccessRecording(staff, recording)).toBe(false);
-    await expect(assertRecordingAccess(staff, recording, audit, 'test')).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    const prisma = grantDb(null);
+    expect(await canAccessRecording(staff, recording, prisma as never)).toBe(false);
+    await expect(
+      assertRecordingAccess(staff, recording, { prisma: prisma as never, audit }, 'test'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'university.recording_access_denied',
@@ -320,10 +325,26 @@ describe('interview recordings default-deny (Th6-444)', () => {
     );
   });
 
-  it('still lets the student see their own recording', () => {
-    expect(
-      canAccessRecording({ sub: studentId, role: 'STUDENT', inst: institutionId }, recording),
-    ).toBe(true);
+  it('allows staff only through an unexpired, unrevoked grant for that recording', async () => {
+    const prisma = grantDb({ id: randomUUID() });
+    expect(await canAccessRecording(staff, recording, prisma as never)).toBe(true);
+    expect(prisma.recordingAccessGrant.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          recordingId: recording.id,
+          grantedToUserId: staffId,
+          revokedAt: null,
+          expiresAt: { gt: expect.any(Date) },
+        }),
+      }),
+    );
+  });
+
+  it('still lets the student see their own recording without a grant lookup', async () => {
+    const prisma = grantDb(null);
+    const self = { sub: studentId, role: 'STUDENT', inst: institutionId };
+    expect(await canAccessRecording(self, recording, prisma as never)).toBe(true);
+    expect(prisma.recordingAccessGrant.findFirst).not.toHaveBeenCalled();
   });
 
   it('strips recording keys anywhere in a payload', () => {
