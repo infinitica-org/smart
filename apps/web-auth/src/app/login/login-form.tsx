@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
 import { EMAIL_NOT_VERIFIED_ERROR } from '@smart/contracts';
-import { AlertCircle, CircleOff, X } from 'lucide-react';
+import { AlertCircle, CircleOff } from 'lucide-react';
 import { EyeIcon, EyeOffIcon } from '../../components/auth-icons';
 import { ResendVerification } from '../../components/resend-verification';
 import { api, redirectForRole, storeSession } from '../../lib/api';
@@ -75,8 +75,11 @@ export function LoginForm() {
         setError(err.message);
         setEmailError(err.message);
       } else {
-        setError('Invalid email or password. Please verify your credentials and try again.');
-        setEmailError('Please enter a valid email address');
+        const message =
+          isSmartApiError(err) && err.message
+            ? err.message
+            : 'Invalid email or password. Please verify your credentials and try again.';
+        setError(message);
         setPasswordError('Invalid password');
       }
     } finally {
@@ -92,6 +95,16 @@ export function LoginForm() {
         <h1 className="mt-4 text-[1.65rem] font-bold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
           Log in or sign up
         </h1>
+
+        {error ? (
+          <div
+            role="alert"
+            className="mt-4 flex w-full max-w-[420px] items-center gap-2.5 rounded-md border border-rose-200 bg-rose-50 p-3 text-left text-xs font-medium text-rose-700"
+          >
+            <AlertCircle className="size-4 shrink-0 text-rose-600" />
+            <span className="flex-1">{error}</span>
+          </div>
+        ) : null}
 
         {unverifiedEmail ? <ResendVerification email={unverifiedEmail} /> : null}
         <div className="mt-8 w-full max-w-[420px] space-y-4">

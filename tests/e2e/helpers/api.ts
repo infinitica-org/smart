@@ -75,6 +75,9 @@ export async function createWorkExperience(
       companyLinkedinUrl: payload.companyLinkedinUrl,
       startDate: '2022-01-01T00:00:00.000Z',
       isCurrent: true,
+      domain: 'Software Engineering',
+      responsibilities: 'Built and maintained backend services and APIs for the core platform.',
+      skillsClaimed: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
       verifierEmail: payload.verifierEmail,
       verifierName: payload.verifierName ?? 'E2E Manager',
       documents: [
