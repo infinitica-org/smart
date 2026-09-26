@@ -14,6 +14,15 @@
 
 export { cn, getInitials } from './lib/cn';
 export {
+  DEFAULT_EVENT_TIMEZONE,
+  detectTimeZone,
+  formatEventRange,
+  formatEventTime,
+  listTimeZones,
+  utcToZonedLocal,
+  zonedLocalToUtcIso,
+} from './lib/event-time';
+export {
   BrandLoadingScreen,
   type BrandLoadingScreenProps,
 } from './components/brand-loading-screen';

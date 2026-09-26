@@ -24,10 +24,7 @@ import {
   type RankerJob,
 } from '../matching/rules-ranker.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
-import {
-  COMPANY_VISIBLE_WHERE,
-  passesStudentEligibility,
-} from '../student-jobs/job-eligibility.js';
+import { companyVisibleWhere, passesStudentEligibility } from '../student-jobs/job-eligibility.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
@@ -534,7 +531,7 @@ export class DashboardService {
           { applications: { none: { studentId } } },
           // JOB-02: a job the student hid (Th6-385) never comes back, and unverified companies never show.
           { hiddenBy: { none: { studentId } } },
-          COMPANY_VISIBLE_WHERE,
+          companyVisibleWhere(student.institutionId),
         ],
       },
       orderBy: { createdAt: 'desc' },

@@ -7,6 +7,8 @@ export const NOTIFICATION_KINDS = [
   'VERIFICATION_RESULT',
   'INVITATION',
   'APPLICATION',
+  'CAMPUS_ACCESS',
+  'EVENT',
 ] as const;
 
 export const NotificationKindSchema = z.enum(NOTIFICATION_KINDS);

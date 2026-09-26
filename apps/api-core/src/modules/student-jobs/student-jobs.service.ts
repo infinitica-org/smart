@@ -27,7 +27,7 @@ import {
   type EvidenceInput,
 } from '../readiness/readiness.service.js';
 import {
-  COMPANY_VISIBLE_WHERE,
+  companyVisibleWhere,
   acceptingOpeningWhere,
   isAcceptingApplications,
   isCompanyVerified,
@@ -305,7 +305,10 @@ export class StudentJobsService {
     const saved = await this.prisma.savedJob.findMany({
       where: {
         studentId,
-        job: { institutionId: student.institutionId, AND: [COMPANY_VISIBLE_WHERE] },
+        job: {
+          institutionId: student.institutionId,
+          AND: [companyVisibleWhere(student.institutionId)],
+        },
       },
       orderBy: { savedAt: 'desc' },
       select: { job: { select: OPENING_SELECT } },
@@ -414,7 +417,7 @@ export class StudentJobsService {
         id: uuid.data,
         institutionId: student.institutionId,
         status: { in: ['OPEN', 'CLOSED'] },
-        AND: [COMPANY_VISIBLE_WHERE],
+        AND: [companyVisibleWhere(student.institutionId)],
       },
       select: OPENING_SELECT,
     });

@@ -7,7 +7,7 @@ import {
 import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { IdempotencyService } from '../company-profile/idempotency.service.js';
-import { COMPANY_VISIBLE_WHERE, isJobAllowedForStudent } from './job-eligibility.js';
+import { companyVisibleWhere, isJobAllowedForStudent } from './job-eligibility.js';
 
 interface ReportRow {
   id: string;
@@ -52,7 +52,7 @@ export class JobReportsService {
             id: params.body.targetId,
             institutionId: student.institutionId,
             status: { in: ['OPEN', 'CLOSED'] },
-            AND: [COMPANY_VISIBLE_WHERE],
+            AND: [companyVisibleWhere(student.institutionId)],
           },
           select: { id: true, institutionId: true, companyId: true },
         })

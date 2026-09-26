@@ -29,7 +29,7 @@ import { scoreOpeningForStudent, type OpeningFit } from '../matching/opening-fit
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
 import {
-  COMPANY_VISIBLE_WHERE,
+  companyVisibleWhere,
   isAcceptingApplications,
   isCompanyVerified,
   isJobAllowedForStudent,
@@ -437,7 +437,7 @@ export class ApplicationService {
         id: jobId,
         institutionId: student.institutionId,
         status: { in: ['OPEN', 'CLOSED'] },
-        AND: [COMPANY_VISIBLE_WHERE],
+        AND: [companyVisibleWhere(student.institutionId)],
       },
       select: JOB_SELECT,
     });

@@ -29,6 +29,7 @@ import { SignalIngestionModule } from './modules/signal-ingestion/signal-ingesti
 import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
 import { SignalEncoderModule } from './modules/signal-encoder/signal-encoder.module.js';
 import { InstitutionsModule } from './modules/institutions/institutions.module.js';
+import { CampusModule } from './modules/campus/campus.module.js';
 import { InterviewsModule } from './modules/interviews/interviews.module.js';
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
@@ -90,6 +91,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     ReadinessModule,
     WorkExperienceModule,
     InstitutionsModule,
+    CampusModule,
     InterviewsModule,
     CatalogModule,
     AssessmentModule,

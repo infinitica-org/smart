@@ -1,4 +1,28 @@
 import {
+  CampusAccessRequestDtoSchema,
+  CareerEventDtoSchema,
+  DecideCampusAccessResponseSchema,
+  EmployerCampusAccessResponseSchema,
+  EventRegistrationDtoSchema,
+  PublicCareerEventSchema,
+  PublicCareerEventsResponseSchema,
+  RevokeCampusAccessResponseSchema,
+  UniversityEmployerRequestsResponseSchema,
+  UniversityEmployersResponseSchema,
+  UniversityEventDetailSchema,
+  UniversityEventsResponseSchema,
+  type CancelCareerEvent,
+  type CreateCampusAccessRequest,
+  type CreateCareerEvent,
+  type DecideCampusAccessRequest,
+  type RevokeCampusAccess,
+  type StudentEventsQuery,
+  type UniversityEmployerRequestsQuery,
+  type UniversityEmployersQuery,
+  type UniversityEventsQuery,
+  type UpdateCareerEvent,
+} from '@smart/contracts';
+import {
   AdminConversationViewSchema,
   DeleteMessageResponseSchema,
   ListBlocksResponseSchema,
@@ -2493,6 +2517,109 @@ function messagingApi(client: SmartApiClient) {
   };
 }
 
+/** UNI-05 — employer campus access and career events (Th6-445 to Th6-451). */
+function campusApi(client: SmartApiClient) {
+  const key = (idempotencyKey: string) => ({ headers: { 'idempotency-key': idempotencyKey } });
+  const ifMatch = (version: number) => ({ headers: { 'If-Match': String(version) } });
+  return {
+    /* employer side */
+    /** Th6-445 — partner universities with this employer's standing at each. */
+    employerCampusAccess: () =>
+      client.get(prefixed('/employer/campus-access'), {
+        schema: EmployerCampusAccessResponseSchema,
+      }),
+    /** Th6-445 — reuse the same key for a retry so the request is never created twice. */
+    requestCampusAccess: (body: CreateCampusAccessRequest, idempotencyKey: string) =>
+      client.post(prefixed('/employer/campus-access'), body, {
+        schema: CampusAccessRequestDtoSchema,
+        ...key(idempotencyKey),
+      }),
+    /** Th6-450 — events at universities where this employer is approved. */
+    employerEvents: (query?: Partial<StudentEventsQuery>) =>
+      client.get(prefixed('/employer/events'), {
+        schema: PublicCareerEventsResponseSchema,
+        query,
+      }),
+
+    /* university side */
+    /** Th6-445 */
+    listEmployerRequests: (query?: Partial<UniversityEmployerRequestsQuery>) =>
+      client.get(prefixed('/university/employer-requests'), {
+        schema: UniversityEmployerRequestsResponseSchema,
+        query,
+      }),
+    /** Th6-446 */
+    decideEmployerRequest: (requestId: string, body: DecideCampusAccessRequest) =>
+      client.post(prefixed(`/university/employer-requests/${requestId}/decide`), body, {
+        schema: DecideCampusAccessResponseSchema,
+      }),
+    /** Th6-446 */
+    revokeEmployer: (companyId: string, body: RevokeCampusAccess) =>
+      client.post(prefixed(`/university/employers/${companyId}/revoke`), body, {
+        schema: RevokeCampusAccessResponseSchema,
+      }),
+    /** Th6-447 */
+    listEmployers: (query?: Partial<UniversityEmployersQuery>) =>
+      client.get(prefixed('/university/employers'), {
+        schema: UniversityEmployersResponseSchema,
+        query,
+      }),
+    /** Th6-448 — a retry of the same draft must reuse its key. */
+    createEvent: (body: CreateCareerEvent, idempotencyKey: string) =>
+      client.post(prefixed('/university/events'), body, {
+        schema: CareerEventDtoSchema,
+        ...key(idempotencyKey),
+      }),
+    listUniversityEvents: (query?: Partial<UniversityEventsQuery>) =>
+      client.get(prefixed('/university/events'), {
+        schema: UniversityEventsResponseSchema,
+        query,
+      }),
+    getUniversityEvent: (eventId: string) =>
+      client.get(prefixed(`/university/events/${eventId}`), {
+        schema: UniversityEventDetailSchema,
+      }),
+    /** Th6-449 */
+    publishEvent: (eventId: string) =>
+      client.post(
+        prefixed(`/university/events/${eventId}/publish`),
+        {},
+        {
+          schema: CareerEventDtoSchema,
+        },
+      ),
+    updateEvent: (eventId: string, version: number, body: UpdateCareerEvent) =>
+      client.patch(prefixed(`/university/events/${eventId}`), body, {
+        schema: CareerEventDtoSchema,
+        ...ifMatch(version),
+      }),
+    cancelEvent: (eventId: string, body: CancelCareerEvent) =>
+      client.post(prefixed(`/university/events/${eventId}/cancel`), body, {
+        schema: CareerEventDtoSchema,
+      }),
+
+    /* students and employers */
+    /** Th6-451 — the caller's own university (student) or approved universities (employer). */
+    listEvents: (query?: Partial<StudentEventsQuery>) =>
+      client.get(prefixed('/events'), { schema: PublicCareerEventsResponseSchema, query }),
+    getEvent: (eventId: string) =>
+      client.get(prefixed(`/events/${eventId}`), { schema: PublicCareerEventSchema }),
+    /** Th6-450 / 451 — registering twice returns the existing registration. */
+    registerForEvent: (eventId: string) =>
+      client.post(
+        prefixed(`/events/${eventId}/registrations`),
+        {},
+        {
+          schema: EventRegistrationDtoSchema,
+        },
+      ),
+    cancelEventRegistration: (eventId: string) =>
+      client.delete(prefixed(`/events/${eventId}/registrations`), {
+        schema: EventRegistrationDtoSchema,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -2517,6 +2644,7 @@ export function createSmartApi(client: SmartApiClient) {
     studentJobs: studentJobsApi(client),
     studentApplications: studentApplicationsApi(client),
     messaging: messagingApi(client),
+    campus: campusApi(client),
   };
 }
 

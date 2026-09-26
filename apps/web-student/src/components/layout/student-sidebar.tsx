@@ -14,13 +14,14 @@ import {
   Settings,
   Sparkles,
   Target,
+  CalendarDays,
   User,
   Video,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn, useUnreadMessageCount } from '@smart/ui';
-import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
+import smartLogoImg from '@smart/ui/assets/images/Logos/WebP/Smart-logo.png';
 
 interface NavItem {
   name: string;
@@ -32,6 +33,7 @@ const mainNavItems: NavItem[] = [
   { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Matches', href: '/matches', icon: Target },
   { name: 'Opportunities', href: '/opportunities', icon: Sparkles },
+  { name: 'Events', href: '/events', icon: CalendarDays },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'My profile', href: '/profile', icon: User },
   { name: 'Skills', href: '/skills', icon: Award },

@@ -84,6 +84,7 @@ export * from './dto/account.dto.js';
 export * from './dto/student-dashboard.dto.js';
 export * from './dto/student-readiness.dto.js';
 export * from './dto/university-roster.dto.js';
+export * from './dto/campus-events.dto.js';
 export * from './dto/void.dto.js';
 export * from './dto/candidate-degree-details.dto.js';
 export * from './dto/candidate-profile.dto.js';

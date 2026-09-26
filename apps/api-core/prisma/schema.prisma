@@ -281,6 +281,8 @@ enum NotificationKind {
   TRUST_ENFORCEMENT
   APPLICATION
   MESSAGE
+  CAMPUS_ACCESS
+  EVENT
 }
 
 enum ProjectStatus {
@@ -326,6 +328,9 @@ model Institution {
   matchRuns            MatchRun[]
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
+  campusAccessRequests CampusAccessRequest[]
+  employerAccess       UniversityEmployerAccess[]
+  careerEvents         CareerEvent[]
 
   @@index([organizationId])
   @@map("institutions")
@@ -1031,6 +1036,8 @@ model Company {
   verificationDocuments CompanyVerificationDocument[]
   profile               CompanyProfile?
   reviews               CompanyReview[]
+  campusAccessRequests  CampusAccessRequest[]
+  campusAccess          UniversityEmployerAccess[]
 
   @@index([organizationId])
   @@map("companies")
@@ -2945,4 +2952,119 @@ model RecordingAccessGrant {
   @@index([recordingId, grantedToUserId])
   @@index([studentId])
   @@map("recording_access_grants")
+}
+
+enum CampusAccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  REVOKED
+}
+
+enum CampusAccessStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum CareerEventAudience {
+  STUDENTS
+  EMPLOYERS
+  BOTH
+}
+
+enum CareerEventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum EventRegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+}
+
+/// UNI-05 (Th6-445) - a verified employer asking one institution for campus access.
+/// "Only one PENDING per (company, institution)" is a partial unique index in the migration.
+model CampusAccessRequest {
+  id            String                    @id @default(uuid()) @db.Uuid
+  companyId     String                    @map("company_id") @db.Uuid
+  company       Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  institutionId String                    @map("institution_id") @db.Uuid
+  institution   Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  message       String?
+  status        CampusAccessRequestStatus @default(PENDING)
+  requestedById String                    @map("requested_by_id") @db.Uuid
+  decidedById   String?                   @map("decided_by_id") @db.Uuid
+  decidedAt     DateTime?                 @map("decided_at") @db.Timestamptz(6)
+  reason        String?
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([institutionId, status, createdAt])
+  @@index([companyId, institutionId])
+  @@map("campus_access_requests")
+}
+
+/// UNI-05 (Th6-446) - the single source of truth for "employer approved at this campus".
+model UniversityEmployerAccess {
+  id            String             @id @default(uuid()) @db.Uuid
+  institutionId String             @map("institution_id") @db.Uuid
+  institution   Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  companyId     String             @map("company_id") @db.Uuid
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status        CampusAccessStatus @default(ACTIVE)
+  approvedAt    DateTime           @map("approved_at") @db.Timestamptz(6)
+  revokedAt     DateTime?          @map("revoked_at") @db.Timestamptz(6)
+  revokedById   String?            @map("revoked_by_id") @db.Uuid
+
+  @@unique([institutionId, companyId])
+  @@index([companyId, status])
+  @@map("university_employer_access")
+}
+
+/// UNI-05 (Th6-448) - a career event. startsAt/endsAt are UTC; `timezone` is the IANA zone to display in.
+model CareerEvent {
+  id                   String              @id @default(uuid()) @db.Uuid
+  institutionId        String              @map("institution_id") @db.Uuid
+  institution          Institution         @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  title                String
+  description          String              @default("")
+  startsAt             DateTime            @map("starts_at") @db.Timestamptz(6)
+  endsAt               DateTime            @map("ends_at") @db.Timestamptz(6)
+  timezone             String
+  location             String?
+  onlineUrl            String?             @map("online_url")
+  capacity             Int?
+  audience             CareerEventAudience @default(STUDENTS)
+  employerRegistration Boolean             @default(false) @map("employer_registration")
+  status               CareerEventStatus   @default(DRAFT)
+  cancelReason         String?             @map("cancel_reason")
+  createdById          String              @map("created_by_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic lock (If-Match) and the notification dedupe key component.
+  version              Int                 @default(1)
+
+  registrations EventRegistration[]
+
+  @@index([institutionId, status, startsAt])
+  @@map("career_events")
+}
+
+/// UNI-05 (Th6-450/451) - one registration per (event, user).
+model EventRegistration {
+  id           String                  @id @default(uuid()) @db.Uuid
+  eventId      String                  @map("event_id") @db.Uuid
+  event        CareerEvent             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId       String                  @map("user_id") @db.Uuid
+  /// The employer company for company registrants; null for students.
+  companyId    String?                 @map("company_id") @db.Uuid
+  status       EventRegistrationStatus
+  registeredAt DateTime                @default(now()) @map("registered_at") @db.Timestamptz(6)
+  cancelledAt  DateTime?               @map("cancelled_at") @db.Timestamptz(6)
+
+  @@unique([eventId, userId])
+  @@index([eventId, status, registeredAt])
+  @@index([userId, status])
+  @@map("event_registrations")
 }
