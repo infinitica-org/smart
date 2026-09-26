@@ -4,14 +4,33 @@ import { MatchingModule } from '../matching/matching.module.js';
 import { EvidenceModule } from '../evidence/evidence.module.js';
 import { ApplicationsModule } from '../applications/applications.module.js';
 import { MeApplicationsController } from './me-applications.controller.js';
+import { PlacementCalendarController } from './placement-calendar.controller.js';
+import { PlacementCalendarService } from './placement-calendar.service.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
+import { TpoShortlistController } from './tpo-shortlist.controller.js';
+import { TpoShortlistService } from './tpo-shortlist.service.js';
 
 @Module({
   imports: [StorageModule, MatchingModule, EvidenceModule, ApplicationsModule],
-  controllers: [PlacementController, MeApplicationsController],
-  providers: [PlacementService, PlacementEmployersService],
-  exports: [PlacementService, PlacementEmployersService],
+  controllers: [
+    PlacementController,
+    MeApplicationsController,
+    PlacementCalendarController,
+    TpoShortlistController,
+  ],
+  providers: [
+    PlacementService,
+    PlacementEmployersService,
+    PlacementCalendarService,
+    TpoShortlistService,
+  ],
+  exports: [
+    PlacementService,
+    PlacementEmployersService,
+    PlacementCalendarService,
+    TpoShortlistService,
+  ],
 })
 export class PlacementModule {}

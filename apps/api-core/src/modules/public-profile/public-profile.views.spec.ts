@@ -34,7 +34,6 @@ describe('PublicProfileService employer view tracking (STU-03)', () => {
         viewerId: 'employer-1',
         viewerRole: 'COMPANY',
         viewerOrganizationId: companyId,
-        source: 'public_link',
       },
     });
   });
