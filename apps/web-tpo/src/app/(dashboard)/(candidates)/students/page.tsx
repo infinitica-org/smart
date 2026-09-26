@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { MessageStudentButton } from '../../../../components/message-student-button';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Clock, ChevronRight, Users, ShieldCheck } from 'lucide-react';
@@ -136,6 +137,15 @@ export default function CandidatesPage() {
           <span className="inline-flex items-center rounded-md border border-zinc-200/80 bg-zinc-100/90 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
             {candidateCountLabel(students.length)}
           </span>
+        }
+        actions={
+          <Link
+            href="/students/readiness"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900 shadow-2xs hover:bg-zinc-50"
+          >
+            <ShieldCheck className="size-3.5" aria-hidden />
+            Readiness dashboard
+          </Link>
         }
       />
 

@@ -17,6 +17,9 @@ import {
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   ShortlistDtoSchema,
+  SendMessageResponseSchema,
+  UniversityRosterResponseSchema,
+  UniversityStudentSummarySchema,
   z,
   type AtsStage,
   type CreateApplicationRequest,
@@ -31,6 +34,11 @@ import {
   type StaffMemberDto,
   type InstitutionStudentDto,
   type StaffRole,
+  type SendMessageResponse,
+  type UniversityMessageStudentRequest,
+  type UniversityRosterQuery,
+  type UniversityRosterResponse,
+  type UniversityStudentSummary,
 } from '@smart/contracts';
 import {
   SmartApiClient,
@@ -202,5 +210,30 @@ export const staffApi = {
   listAssignedStudents: (): Promise<InstitutionStudentDto[]> =>
     apiClient.get(`${API_PREFIX}/tpo/students/assigned-to-me`, {
       schema: z.array(InstitutionStudentDtoSchema),
+    }),
+};
+
+/** UNI-04 — student readiness dashboard (Th6-437 to Th6-444). */
+export const universityApi = {
+  roster: (
+    query: Partial<Omit<UniversityRosterQuery, 'limit'>> & { limit?: number },
+  ): Promise<UniversityRosterResponse> =>
+    apiClient.get(`${API_PREFIX}/tpo/students/roster`, {
+      schema: UniversityRosterResponseSchema,
+      query,
+    }),
+  summary: (userId: string): Promise<UniversityStudentSummary> =>
+    apiClient.get(`${API_PREFIX}/tpo/students/${userId}/summary`, {
+      schema: UniversityStudentSummarySchema,
+    }),
+  /** `idempotencyKey` must be reused for a retry of the same draft so it cannot send twice. */
+  messageStudent: (
+    userId: string,
+    idempotencyKey: string,
+    body: UniversityMessageStudentRequest,
+  ): Promise<SendMessageResponse> =>
+    apiClient.post(`${API_PREFIX}/tpo/students/${userId}/messages`, body, {
+      schema: SendMessageResponseSchema,
+      headers: { 'Idempotency-Key': idempotencyKey },
     }),
 };
