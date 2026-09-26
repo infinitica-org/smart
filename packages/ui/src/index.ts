@@ -215,3 +215,18 @@ export {
 export { ReportMessageDialog } from './messaging/report-message-dialog';
 export { ReportedConversationView } from './messaging/reported-conversation-view';
 export { useUnreadMessageCount, MessageText, SnippetText } from './messaging/messaging-utils';
+export {
+  ParticipantAvatar,
+  initialsOf,
+  type ParticipantAvatarProps,
+} from './messaging/participant-avatar';
+export { BlockedUsersList } from './messaging/blocked-users-list';
+export { AdminReportsList, type AdminReportsListProps } from './messaging/admin-reports-list';
+export {
+  ConversionMetricsCard,
+  CONVERSION_RANGES,
+  NOT_ENOUGH_CANDIDATES,
+  conversionRangeQuery,
+  type ConversionMetricsCardProps,
+  type ConversionRange,
+} from './components/conversion-metrics-card';

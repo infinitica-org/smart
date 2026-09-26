@@ -1233,6 +1233,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/admin/reports',
+    module: 'messaging',
+    owner: 'Th6-COM-01',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Moderation queue: reports by target, status and date; no message content (Th6-430).',
+  },
+  {
+    method: 'GET',
     path: '/admin/reports/:reportId/conversation',
     module: 'messaging',
     owner: 'Th6-COM-01',

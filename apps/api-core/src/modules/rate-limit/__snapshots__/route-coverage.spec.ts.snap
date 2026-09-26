@@ -54,6 +54,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /admin/platform-health": "role.superAdmin",
   "GET /admin/project-review-queue": "role.superAdmin",
   "GET /admin/project-review-queue/:projectId": "role.superAdmin",
+  "GET /admin/reports": "role.superAdmin",
   "GET /admin/reports/:reportId/conversation": "role.superAdmin",
   "GET /admin/sessions": "role.superAdmin",
   "GET /admin/skills/retake-policies": "role.superAdmin",

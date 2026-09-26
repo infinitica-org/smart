@@ -15,7 +15,6 @@ import {
 } from '@smart/api-client';
 import type { UserRole } from '@smart/contracts';
 import { ForbiddenWall } from './components/status-walls';
-import { SmartLogo } from './components/smart-logo';
 import { BrandLoadingScreen } from './components/brand-loading-screen';
 
 export type RolesGuardProps = {

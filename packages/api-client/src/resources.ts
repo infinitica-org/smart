@@ -23,6 +23,10 @@ import {
   type UpdateCareerEvent,
 } from '@smart/contracts';
 import {
+  ConversionMetricsSchema,
+  ListAdminReportsResponseSchema,
+  type ConversionMetricsQuery,
+  type ListAdminReportsQuery,
   AdminConversationViewSchema,
   DeleteMessageResponseSchema,
   ListBlocksResponseSchema,
@@ -2382,6 +2386,13 @@ function employerApi(client: SmartApiClient) {
         schema: ListEmployerApplicantsResponseSchema,
       }),
 
+    /** Th6-421 — conversion for one of my jobs, or (no jobId) my whole company. */
+    conversion: (jobId: string | undefined, query: ConversionMetricsQuery = {}) =>
+      client.get(prefixed(jobId ? `/employer/jobs/${jobId}/conversion` : '/employer/conversion'), {
+        query: { from: query.from, to: query.to },
+        schema: ConversionMetricsSchema,
+      }),
+
     listMembers: () =>
       client.get(prefixed('/employer/members'), { schema: ListCompanyMembersResponseSchema }),
 
@@ -2577,6 +2588,19 @@ function messagingApi(client: SmartApiClient) {
     /** Th6-427 — report a message (targetType MESSAGE); a repeat returns the existing report. */
     reportMessage: (body: CreateReportRequest, idempotencyKey: string) =>
       client.post(prefixed('/reports'), body, { schema: ReportSchema, ...key(idempotencyKey) }),
+    /** Th6-430 — moderators only: the moderation queue, metadata only. */
+    adminListReports: (query: Partial<ListAdminReportsQuery> = {}) =>
+      client.get(prefixed('/admin/reports'), {
+        query: {
+          targetType: query.targetType,
+          status: query.status,
+          from: query.from,
+          to: query.to,
+          cursor: query.cursor,
+          limit: query.limit,
+        },
+        schema: ListAdminReportsResponseSchema,
+      }),
     /** Th6-430 — moderators only; the reason is audited. */
     adminConversation: (reportId: string, query: AdminConversationQuery) =>
       client.request({
