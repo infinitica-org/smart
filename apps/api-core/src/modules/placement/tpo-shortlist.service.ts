@@ -5,7 +5,12 @@ import type {
   ListTpoShortlistQuery,
   ShortlistDto,
 } from '@smart/contracts';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+interface StudentMock {
+  name?: string;
+  fullName?: string;
+  primaryTrackCode?: string;
+  primaryTrack?: { code: string };
+}
 
 @Injectable()
 export class TpoShortlistService {
@@ -40,11 +45,14 @@ export class TpoShortlistService {
       const student = app.student;
       const cert = student?.certificates?.[0];
       const matchScore = Number(app.matchScore ?? 0.85);
+      const studentObj = student as unknown as StudentMock | undefined;
 
       return {
         studentId: app.studentId,
-        studentName: student?.fullName || 'Candidate',
-        trackCode: 'TECH_FULLSTACK' as const,
+        studentName: studentObj?.name || studentObj?.fullName || 'Candidate',
+        trackCode: (studentObj?.primaryTrackCode ||
+          studentObj?.primaryTrack?.code ||
+          'TECH_FULLSTACK') as 'TECH_FULLSTACK',
         certificateId: cert?.id || null,
         highestLevelCleared: 3 as const,
         headlineTier: (cert?.headlineTier as 'GOLD' | 'SILVER' | 'BRONZE' | null) || 'SILVER',

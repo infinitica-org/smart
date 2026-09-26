@@ -93,14 +93,19 @@ export class PlacementCalendarService {
   }
 
   async getCtcAnalytics(_institutionId: string): Promise<PlacementCtcAnalyticsDto> {
-    const placements = await this.prisma.placementRecord.findMany({
-      select: { packageLpa: true, outcome: true },
-    });
+    const placements = (await this.prisma.placementRecord.findMany()) as Array<{
+      packageLpa?: number | null;
+      ctcLpa?: number | null;
+      outcome?: string | null;
+      offerStatus?: string | null;
+      branch?: string | null;
+    }>;
 
     const validRecords = placements
       .map((p) => ({
-        packageLpa: p.packageLpa,
-        outcome: p.outcome,
+        packageLpa: p.packageLpa ?? p.ctcLpa,
+        outcome: p.outcome ?? p.offerStatus,
+        branch: p.branch,
       }))
       .filter((p) => p.packageLpa !== null && p.packageLpa !== undefined);
     const ctcs = validRecords.map((p) => Number(p.packageLpa)).sort((a, b) => a - b);
