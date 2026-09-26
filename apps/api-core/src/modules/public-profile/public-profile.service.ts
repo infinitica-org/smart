@@ -206,7 +206,6 @@ export class PublicProfileService {
           viewerId: viewer.sub,
           viewerRole: viewer.role,
           viewerOrganizationId: viewer.companyId ?? null,
-          source: 'public_link',
         },
       });
     } catch {
