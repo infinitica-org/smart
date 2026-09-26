@@ -75,6 +75,11 @@ import type {
   GlobalStudentSearchQuery,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
+  CreateBatchRequest,
+  UpdateBatchRequest,
+  ListBatchesQuery,
+  CreateCampusRequest,
+  UpdateCampusRequest,
   ListInstitutionsQuery,
   ListGithubReposRequest,
   ParseResumeRequest,
@@ -188,6 +193,7 @@ import {
   UserHoldResponseSchema,
   RegisterResponseSchema,
   BatchDtoSchema,
+  CampusDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
   CandidateCertificateDtoSchema,
@@ -1334,15 +1340,29 @@ export function onboardingApi(client: SmartApiClient) {
         schema: PlatformAdminDtoSchema,
       }),
 
-    createBatch: (body: { name: string; code?: string }) =>
+    createBatch: (body: CreateBatchRequest) =>
       client.post(prefixed('/tpo/batches'), body, { schema: BatchDtoSchema }),
 
-    listBatches: () => client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema) }),
+    listBatches: (query?: ListBatchesQuery) =>
+      client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema), query }),
+
+    /** S6-VV-112 — the institution's campuses; archived ones only when asked for. */
+    listCampuses: (query?: { includeArchived?: boolean }) =>
+      client.get(prefixed('/tpo/campuses'), {
+        schema: z.array(CampusDtoSchema),
+        query: query?.includeArchived ? { includeArchived: 'true' } : undefined,
+      }),
+
+    createCampus: (body: CreateCampusRequest) =>
+      client.post(prefixed('/tpo/campuses'), body, { schema: CampusDtoSchema }),
+
+    updateCampus: (campusId: string, body: UpdateCampusRequest) =>
+      client.patch(prefixed(`/tpo/campuses/${campusId}`), body, { schema: CampusDtoSchema }),
 
     getBatch: (batchId: string) =>
       client.get(prefixed(`/tpo/batches/${batchId}`), { schema: BatchDtoSchema }),
 
-    updateBatch: (batchId: string, body: { name?: string; code?: string | null }) =>
+    updateBatch: (batchId: string, body: UpdateBatchRequest) =>
       client.patch(prefixed(`/tpo/batches/${batchId}`), body, { schema: BatchDtoSchema }),
 
     addBatchMember: (
