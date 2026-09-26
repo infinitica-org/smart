@@ -114,8 +114,7 @@ EOF
 
 protect_dev() {
   local branch="$1"
-  echo "Protecting '$branch' (team PRs, no direct push)"
-  # restrictions: null = anyone with write can merge via PR after checks and approval
+  echo "Protecting '$branch' (team PRs, merge restricted to @brittytino and @vis465)"
   run gh api -X PUT "repos/$REPO/branches/$branch/protection" \
     --input - <<EOF
 {
@@ -129,7 +128,11 @@ protect_dev() {
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false
   },
-  "restrictions": null,
+  "restrictions": {
+    "users": ["brittytino", "vis465"],
+    "teams": [],
+    "apps": []
+  },
   "allow_force_pushes": false,
   "allow_deletions": false,
   "required_linear_history": true,
