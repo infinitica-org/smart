@@ -29,6 +29,7 @@ function setupRosterTest(opts?: {
     },
     featureFlag: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    campus: { findFirst: vi.fn().mockResolvedValue(null) },
     batch: {
       findFirst: vi.fn().mockResolvedValue({
         id: batchId,

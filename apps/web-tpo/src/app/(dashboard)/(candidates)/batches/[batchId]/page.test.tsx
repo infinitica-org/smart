@@ -41,6 +41,8 @@ const batch = {
   institutionId: 'inst-1',
   name: 'Fall 2026',
   code: 'F26',
+  campusId: null,
+  campusName: null,
   memberCount: 1,
   pendingInviteCount: 1,
   createdAt: '2026-01-01T00:00:00.000Z',

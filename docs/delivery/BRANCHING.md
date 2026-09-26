@@ -24,11 +24,11 @@ main  ──── always production-ready. Gated & merged by @brittytino (or re
            └── chore/S6-TN-00-decentralised-review-model
 ```
 
-| Branch     | Purpose                                                             | Who reviews                                             | Who merges                           | Deploy target                                              |
-| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
-| **`dev`**  | Daily integration. Feature PRs require module owner approval.       | **Module Owner** (per CODEOWNERS) + Architect for seams | **Author / Module Owner** (after CI) | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI)  |
-| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (System Architect)                             | **Tino** only                        | **kvm2** `smart-qa`                                        |
-| **`main`** | Production / GA truth. Always deployable.                           | **Tino** (System Architect)                             | **Only `@brittytino`**               | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI) |
+| Branch     | Purpose                                                             | Who reviews                                             | Who merges                               | Deploy target                                              |
+| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| **`dev`**  | Daily integration. Feature PRs require module owner approval.       | **Module Owner** (per CODEOWNERS) + Architect for seams | **`@brittytino` / `@vis465`** (after CI) | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI)  |
+| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (System Architect)                             | **Only `@brittytino`**                   | **kvm2** `smart-qa`                                        |
+| **`main`** | Production / GA truth. Always deployable.                           | **Tino** (System Architect)                             | **Only `@brittytino`**                   | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI) |
 
 Engineers **never** commit directly to `main`, `qa`, or `dev`.
 Every change lands via a **pull request**, verified by CI and reviewed per the ownership matrix.
@@ -106,10 +106,11 @@ Hotfix on production: branch from `main` → PR to `main` (brittytino) → cherr
 
 ### `dev`
 
-- Require PR + **1 approving review** (any team member — module owner expected by policy)
+- Require PR + **1 approving review**
 - Require status checks: `ci`, `enforce-flow`
 - No force push / no delete
-- All team members may open PRs and merge after the module owner approves
+- **Merge & push permissions:** Restricted to `@brittytino` (System Architect) and `@vis465` (Vishal V)
+- All team members open PRs against `dev`; once CI is green and review is complete, `@brittytino` or `@vis465` merges into `dev`.
 
 > [!IMPORTANT]
 > **GitHub Free Plan — CODEOWNERS limitation.**

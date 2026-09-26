@@ -8,12 +8,14 @@ import {
   PdfGenerationProcessor,
   SandboxExecutionProcessor,
 } from './async-job.processor.js';
-import { AuditLogPurgeProcessor } from './audit-log-purge.processor.js';
+import { RetentionSweepProcessor } from '../retention/retention-sweep.processor.js';
+import { RetentionSweepService } from '../retention/retention-sweep.service.js';
+import { StorageModule } from '../storage/storage.module.js';
 import { EmailProcessor } from './email.processor.js';
 import {
   AUDIO_EVALUATION_DLQ,
   AUDIO_EVALUATION_QUEUE,
-  AUDIT_LOG_PURGE_QUEUE,
+  RETENTION_SWEEP_QUEUE,
   MESSAGE_MODERATION_PURGE_QUEUE,
   CREDENTIAL_VERIFICATION_DLQ,
   CREDENTIAL_VERIFICATION_QUEUE,
@@ -25,6 +27,10 @@ import {
   QLIX_RECALIBRATION_QUEUE,
   DEFAULT_JOB_OPTIONS,
   JD_PARSE_DLQ,
+  DSR_EXPORT_DLQ,
+  DSR_ERASURE_DLQ,
+  DSR_ERASURE_QUEUE,
+  DSR_EXPORT_QUEUE,
   JD_PARSE_QUEUE,
   SKILL_VERIFY_GRADE_DLQ,
   SKILL_VERIFY_GRADE_QUEUE,
@@ -43,7 +49,7 @@ const queues = [
   { name: SANDBOX_EXECUTION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: AUDIO_EVALUATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: PDF_GENERATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
-  { name: AUDIT_LOG_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: RETENTION_SWEEP_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: MESSAGE_MODERATION_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: EVIDENCE_EXPIRATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: EVIDENCE_RECONCILIATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
@@ -64,6 +70,10 @@ const queues = [
   { name: JD_PARSE_DLQ },
   { name: SKILL_VERIFY_GRADE_DLQ },
   { name: SCORE_RECALCULATION_DLQ },
+  { name: DSR_EXPORT_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: DSR_EXPORT_DLQ },
+  { name: DSR_ERASURE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: DSR_ERASURE_DLQ },
 ];
 
 @Global()
@@ -74,13 +84,15 @@ const queues = [
     }),
     BullModule.registerQueue(...queues),
     forwardRef(() => EvidenceModule),
+    StorageModule,
   ],
   providers: [
     EmailProcessor,
     SandboxExecutionProcessor,
     AudioEvaluationProcessor,
     PdfGenerationProcessor,
-    AuditLogPurgeProcessor,
+    RetentionSweepService,
+    RetentionSweepProcessor,
   ],
   exports: [BullModule],
 })

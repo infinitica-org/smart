@@ -167,6 +167,8 @@ export const ListInstitutionStudentsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   inviteStatus: StudentInviteFilterSchema.optional(),
   batchId: UuidSchema.optional(),
+  /** S6-VV-112 — students whose batch belongs to this campus. */
+  campusId: UuidSchema.optional(),
 });
 export type ListInstitutionStudentsQuery = z.infer<typeof ListInstitutionStudentsQuerySchema>;
 
@@ -383,25 +385,77 @@ export const InvitePlatformAdminRequestSchema = z.object({
 });
 export type InvitePlatformAdminRequest = z.infer<typeof InvitePlatformAdminRequestSchema>;
 
+/* -------------------------------- campuses -------------------------------- */
+
+/** S6-VV-112 (#163) — a campus of the caller's institution. Archived campuses keep their batches. */
+export const CampusDtoSchema = z.object({
+  campusId: UuidSchema,
+  name: z.string(),
+  code: z.string().nullable(),
+  city: z.string().nullable(),
+  isPrimary: z.boolean(),
+  archivedAt: IsoDateTimeSchema.nullable(),
+  batchCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+});
+export type CampusDto = z.infer<typeof CampusDtoSchema>;
+
+export const CreateCampusRequestSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  code: z.string().trim().min(1).max(40).optional(),
+  city: z.string().trim().min(2).max(120).optional(),
+});
+export type CreateCampusRequest = z.infer<typeof CreateCampusRequestSchema>;
+
+/** `isPrimary: true` moves the primary flag here; `archived` hides the campus from pickers. */
+export const UpdateCampusRequestSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    code: z.string().trim().min(1).max(40).nullable().optional(),
+    city: z.string().trim().min(2).max(120).nullable().optional(),
+    isPrimary: z.literal(true).optional(),
+    archived: z.boolean().optional(),
+  })
+  .refine((body) => Object.values(body).some((value) => value !== undefined), {
+    message: 'Nothing to update.',
+  });
+export type UpdateCampusRequest = z.infer<typeof UpdateCampusRequestSchema>;
+
+export const ListCampusesQuerySchema = z.object({
+  includeArchived: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+});
+export type ListCampusesQuery = z.infer<typeof ListCampusesQuerySchema>;
+
 /* -------------------------------- batches --------------------------------- */
 
 export const CreateBatchRequestSchema = z.object({
   name: z.string().min(2).max(120),
   code: z.string().min(1).max(40).optional(),
+  /** S6-VV-112 — defaults to the institution's primary campus. */
+  campusId: UuidSchema.optional(),
 });
 export type CreateBatchRequest = z.infer<typeof CreateBatchRequestSchema>;
 
 export const UpdateBatchRequestSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   code: z.string().min(1).max(40).nullable().optional(),
+  campusId: UuidSchema.optional(),
 });
 export type UpdateBatchRequest = z.infer<typeof UpdateBatchRequestSchema>;
+
+export const ListBatchesQuerySchema = z.object({ campusId: UuidSchema.optional() });
+export type ListBatchesQuery = z.infer<typeof ListBatchesQuerySchema>;
 
 export const BatchDtoSchema = z.object({
   batchId: UuidSchema,
   institutionId: UuidSchema,
   name: z.string(),
   code: z.string().nullable(),
+  campusId: UuidSchema.nullable(),
+  campusName: z.string().nullable(),
   memberCount: z.number().int().nonnegative(),
   pendingInviteCount: z.number().int().nonnegative(),
   createdAt: IsoDateTimeSchema,

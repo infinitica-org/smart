@@ -10,6 +10,7 @@ import { TrustService } from './trust.service.js';
 import { ScoreRecalculationProcessor } from './score-recalculation.processor.js';
 
 @Module({
+  // PublicProfileModule imports this module back, so both sides must be forwardRef'd.
   imports: [QueueModule, AuditModule, forwardRef(() => PublicProfileModule)],
   controllers: [
     TrustController,

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from '@nestjs/common';
 import type {
   SupportDiagnosticResponse,
   SupportGrantResponse,
@@ -15,12 +15,12 @@ import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
-import type { SupportService } from './support.service.js';
+import { SupportService } from './support.service.js';
 
 @Controller('admin/support')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(@Inject(SupportService) private readonly supportService: SupportService) {}
 
   @Get('lookup')
   @Roles('SUPER_ADMIN', 'SUPPORT_LEAD', 'SUPPORT_AGENT')

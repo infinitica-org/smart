@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataRequestsCard } from './DataRequestsCard';
 import { DeactivateAccountCard } from './DeactivateAccountCard';
+import { DiscoverabilityCard } from './DiscoverabilityCard';
 import { MessagingPreferenceCard } from './MessagingPreferenceCard';
 import { PersonalInfoCard } from './PersonalInfoCard';
 
@@ -13,8 +14,11 @@ const { users, signOut } = vi.hoisted(() => ({
     updatePersonalInfo: vi.fn(),
     getMessagingPreference: vi.fn(),
     updateMessagingPreference: vi.fn(),
+    getDiscoverability: vi.fn(),
+    updateDiscoverability: vi.fn(),
     listDataRequests: vi.fn(),
     createDataRequest: vi.fn(),
+    downloadDataExport: vi.fn(),
     deactivateAccount: vi.fn(),
   },
   signOut: vi.fn(),
@@ -142,6 +146,23 @@ describe('MessagingPreferenceCard', () => {
   });
 });
 
+describe('DiscoverabilityCard (S6-VV-113)', () => {
+  it('opts out of employer discovery', async () => {
+    users.getDiscoverability.mockResolvedValue({ discoverableToEmployers: true });
+    users.updateDiscoverability.mockResolvedValue({ discoverableToEmployers: false });
+    renderWithClient(<DiscoverabilityCard />);
+
+    const toggle = await screen.findByRole('switch', { name: /let employers find me/i });
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByText(/placement cell always sees you/i)).toBeTruthy();
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(users.updateDiscoverability).toHaveBeenCalledWith({ discoverableToEmployers: false }),
+    );
+  });
+});
+
 describe('DataRequestsCard', () => {
   it('shows an empty state when there are no requests', async () => {
     users.listDataRequests.mockResolvedValue({ requests: [] });
@@ -192,6 +213,45 @@ describe('DataRequestsCard', () => {
     );
     expect(await screen.findByText('Request submitted.')).toBeTruthy();
     expect(await screen.findByText('OPEN')).toBeTruthy();
+  });
+
+  it('requests an export without details and downloads a finished one (S6-VV-115)', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    users.createDataRequest.mockResolvedValue({ id: 'x1' });
+    users.listDataRequests.mockResolvedValue({
+      requests: [
+        {
+          id: 'x0',
+          type: 'EXPORT',
+          status: 'COMPLETED',
+          details: '',
+          createdAt: '2026-09-24T00:00:00.000Z',
+          resolvedAt: '2026-09-24T00:01:00.000Z',
+          exportAvailableUntil: '2026-10-01T00:01:00.000Z',
+        },
+      ],
+    });
+    users.downloadDataExport.mockResolvedValue({
+      bundleUrl: 'https://signed/bundle.json',
+      files: [{ objectKey: 'evidence/u/cv.pdf', url: 'https://signed/cv.pdf' }],
+      linksExpireInSeconds: 900,
+    });
+    renderWithClient(<DataRequestsCard />);
+
+    fireEvent.change(await screen.findByLabelText('Request type'), {
+      target: { value: 'EXPORT' },
+    });
+    expect(screen.queryByLabelText('Details')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Submit request' }));
+    await waitFor(() =>
+      expect(users.createDataRequest).toHaveBeenCalledWith({ type: 'EXPORT', details: '' }),
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith('https://signed/bundle.json', '_blank', 'noopener'),
+    );
+    expect(await screen.findByRole('link', { name: 'cv.pdf' })).toBeTruthy();
   });
 });
 

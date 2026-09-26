@@ -17,6 +17,8 @@ import { InstitutionsStudentController } from './institutions-student.controller
 import { InstitutionsTpoController } from './institutions-tpo.controller.js';
 import { UniversityStudentsController } from './university-students.controller.js';
 import { UniversityStudentsService } from './university-students.service.js';
+import { InstitutionsCampusesController } from './institutions-campuses.controller.js';
+import { CampusesService } from './campuses.service.js';
 import { InstitutionsService } from './institutions.service.js';
 import { OrganizationsService } from './organizations.service.js';
 
@@ -27,6 +29,7 @@ import { OrganizationsService } from './organizations.service.js';
     InstitutionsAdminController,
     InstitutionsTpoController,
     UniversityStudentsController,
+    InstitutionsCampusesController,
     InstitutionsStudentController,
     InstitutionsPublicController,
     InstitutionsPartnershipController,
@@ -36,6 +39,7 @@ import { OrganizationsService } from './organizations.service.js';
   providers: [
     InstitutionsService,
     UniversityStudentsService,
+    CampusesService,
     AuditLogExportService,
     CompaniesService,
     OrganizationsService,

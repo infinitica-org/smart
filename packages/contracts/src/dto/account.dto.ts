@@ -56,6 +56,15 @@ export const MessagingPreferenceResponseSchema = z.object({
 });
 export type MessagingPreferenceResponse = z.infer<typeof MessagingPreferenceResponseSchema>;
 
+/**
+ * S6-VV-113 (#552) — whether employers can find the student in match runs, shortlists and
+ * candidate search. Their own institution (TPO) sees them either way.
+ */
+export const DiscoverabilityPreferenceSchema = z.object({
+  discoverableToEmployers: z.boolean(),
+});
+export type DiscoverabilityPreference = z.infer<typeof DiscoverabilityPreferenceSchema>;
+
 /** STU-02 — self-service account deactivation; the literal confirmation guards against misclicks. */
 export const DeactivateAccountRequestSchema = z.object({
   confirmation: z.literal('DEACTIVATE', { message: 'Type DEACTIVATE to confirm.' }),
@@ -69,20 +78,27 @@ export const DeactivateAccountResponseSchema = z.object({
 export type DeactivateAccountResponse = z.infer<typeof DeactivateAccountResponseSchema>;
 
 /** STU-02 — DPDP data-principal requests (correction / erasure). */
-export const DataRequestTypeSchema = z.enum(['CORRECTION', 'DELETION']);
+export const DataRequestTypeSchema = z.enum(['CORRECTION', 'DELETION', 'EXPORT']);
 export type DataRequestType = z.infer<typeof DataRequestTypeSchema>;
 
 export const DataRequestStatusSchema = z.enum(['OPEN', 'IN_REVIEW', 'COMPLETED', 'REJECTED']);
 export type DataRequestStatus = z.infer<typeof DataRequestStatusSchema>;
 
-export const CreateDataRequestSchema = z.object({
-  type: DataRequestTypeSchema,
-  details: z
-    .string()
-    .trim()
-    .min(10, 'Please describe the request in at least 10 characters.')
-    .max(2000, 'Details must be at most 2000 characters.'),
-});
+/** Correction and deletion need a description; an EXPORT (S6-VV-115) needs none. */
+export const CreateDataRequestSchema = z
+  .object({
+    type: DataRequestTypeSchema,
+    details: z.string().trim().max(2000, 'Details must be at most 2000 characters.').default(''),
+  })
+  .superRefine((body, ctx) => {
+    if (body.type !== 'EXPORT' && body.details.length < 10) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['details'],
+        message: 'Please describe the request in at least 10 characters.',
+      });
+    }
+  });
 export type CreateDataRequest = z.infer<typeof CreateDataRequestSchema>;
 
 export const DataRequestResponseSchema = z.object({
@@ -92,6 +108,10 @@ export const DataRequestResponseSchema = z.object({
   details: z.string(),
   createdAt: IsoDateTimeSchema,
   resolvedAt: IsoDateTimeSchema.nullable(),
+  /** S6-VV-115 — set on a finished EXPORT while its bundle can still be downloaded. */
+  exportAvailableUntil: IsoDateTimeSchema.nullable(),
+  /** S6-VV-116 — the admin's note when the request was completed or rejected. */
+  resolution: z.string().nullable(),
 });
 export type DataRequestResponse = z.infer<typeof DataRequestResponseSchema>;
 
@@ -99,3 +119,46 @@ export const DataRequestListResponseSchema = z.object({
   requests: z.array(DataRequestResponseSchema),
 });
 export type DataRequestListResponse = z.infer<typeof DataRequestListResponseSchema>;
+
+/** S6-VV-115 — short-lived links to the export bundle and to every file the student uploaded. */
+export const DataExportDownloadSchema = z.object({
+  bundleUrl: z.string(),
+  files: z.array(z.object({ objectKey: z.string(), url: z.string() })),
+  linksExpireInSeconds: z.number().int().positive(),
+});
+export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;
+
+/* ---------------------- S6-VV-116 admin data-request queue ---------------------- */
+
+/** Internal DPDP targets (decided 2026-09-25): first response within 7 days, closed within 30. */
+export const DSR_SLA_FIRST_RESPONSE_DAYS = 7;
+export const DSR_SLA_CLOSE_DAYS = 30;
+
+export const ListAdminDataRequestsQuerySchema = z.object({
+  type: DataRequestTypeSchema.optional(),
+  status: DataRequestStatusSchema.optional(),
+  /** Only requests still inside the queue (OPEN / IN_REVIEW). Default true. */
+  openOnly: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+});
+export type ListAdminDataRequestsQuery = z.infer<typeof ListAdminDataRequestsQuerySchema>;
+
+export const AdminDataRequestDtoSchema = DataRequestResponseSchema.extend({
+  userId: UuidSchema,
+  userEmail: z.string(),
+  userFullName: z.string(),
+  firstRespondedAt: IsoDateTimeSchema.nullable(),
+  respondBy: IsoDateTimeSchema,
+  closeBy: IsoDateTimeSchema,
+  /** `response_overdue` / `close_overdue` once a target has passed without the step done. */
+  slaState: z.enum(['on_track', 'response_overdue', 'close_overdue']),
+});
+export type AdminDataRequestDto = z.infer<typeof AdminDataRequestDtoSchema>;
+
+/** Completing or rejecting needs a note; the student sees it. */
+export const ResolveDataRequestSchema = z.object({
+  note: z.string().trim().min(8, 'Write a note of at least 8 characters.').max(2000),
+});
+export type ResolveDataRequest = z.infer<typeof ResolveDataRequestSchema>;

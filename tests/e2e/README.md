@@ -40,3 +40,17 @@ pnpm --filter @smart/e2e test:ui
 - Invalid token + PARTIAL comment validation UI
 
 Override URLs/credentials with `E2E_*` env vars (see `helpers/env.ts`).
+
+## Wave 1 regression specs (S6-VV-146)
+
+The sprint ship gate: run these before calling a sprint done.
+
+- `student-signup.spec.ts`: register (no session issued) → sign-in refused until the email is verified → resend cooldown → verify → sign in as STUDENT → web-auth login redirects to the student portal.
+- `employer-signup.spec.ts`: free-mail refused → onboarding + email code → submit + document → no sign-in while pending → admin approval (audited) → invite → set password → `APPROVED` status → a company hold blocks the next call.
+- `auth-abuse.spec.ts`: lockout after 5 wrong passwords, per-IP login and register limits (429 + `Retry-After`).
+
+They are API-level (Playwright `request` + Mailpit) except the web-auth login step, so they only need the API, Mailpit and web-auth running (global setup also checks web-verify).
+Each spec sends its own made-up `X-Forwarded-For` (the API trusts the proxy header), so one spec's rate-limit hits never throttle another.
+Every run creates new users and companies with unique emails; nothing needs cleaning up between runs.
+
+> Videos (`retain-on-failure`) need Playwright's ffmpeg: `pnpm --filter @smart/e2e exec playwright install ffmpeg`.

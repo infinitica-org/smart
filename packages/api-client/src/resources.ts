@@ -99,12 +99,19 @@ import type {
   GlobalStudentSearchQuery,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
+  CreateBatchRequest,
+  UpdateBatchRequest,
+  ListBatchesQuery,
+  CreateCampusRequest,
+  UpdateCampusRequest,
   ListInstitutionsQuery,
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
   InstitutionStaffRole,
   ListActiveSessionsQuery,
+  ListAdminDataRequestsQuery,
+  ResolveDataRequest,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
@@ -137,6 +144,7 @@ import type {
   UpdateProfileVisibilityRequest,
   UpdatePersonalInfoRequest,
   UpdateMessagingPreferenceRequest,
+  DiscoverabilityPreference,
   DeactivateAccountRequest,
   CreateDataRequest,
   UpdateProfileViewSettingRequest,
@@ -210,6 +218,7 @@ import {
   UserHoldResponseSchema,
   RegisterResponseSchema,
   BatchDtoSchema,
+  CampusDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
   CandidateCertificateDtoSchema,
@@ -353,9 +362,12 @@ import {
   ProfileVisibilityResponseSchema,
   PersonalInfoResponseSchema,
   MessagingPreferenceResponseSchema,
+  DiscoverabilityPreferenceSchema,
   DeactivateAccountResponseSchema,
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
+  DataExportDownloadSchema,
+  AdminDataRequestDtoSchema,
   StudentDashboardSummarySchema,
   StudentReadinessSummarySchema,
   ProfileViewSettingSchema,
@@ -657,6 +669,20 @@ export function usersApi(client: SmartApiClient) {
         schema: MessagingPreferenceResponseSchema,
       }),
 
+    /** S6-VV-113 — whether employers can find me in match runs and candidate search. */
+    getDiscoverability: () =>
+      client.get(prefixed('/users/me/discoverability'), {
+        schema: DiscoverabilityPreferenceSchema,
+      }),
+
+    updateDiscoverability: (body: DiscoverabilityPreference) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/discoverability'),
+        body,
+        schema: DiscoverabilityPreferenceSchema,
+      }),
+
     deactivateAccount: (body: DeactivateAccountRequest) =>
       client.request({
         method: 'POST',
@@ -674,6 +700,12 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/data-requests'),
         body,
         schema: DataRequestResponseSchema,
+      }),
+
+    /** S6-VV-115 — fresh short-lived links to a finished export. */
+    downloadDataExport: (requestId: string) =>
+      client.get(prefixed(`/users/me/data-requests/${requestId}/download`), {
+        schema: DataExportDownloadSchema,
       }),
 
     listWorkExperiences: () =>
@@ -1061,6 +1093,31 @@ export function onboardingApi(client: SmartApiClient) {
     revokeSession: (sessionId: string, body: TenantActionReason) =>
       client.post<void>(prefixed(`/admin/sessions/${sessionId}/revoke`), body),
 
+    /** S6-VV-116 — the data-subject request queue. */
+    listAdminDataRequests: (query?: Partial<ListAdminDataRequestsQuery>) =>
+      client.get(prefixed('/admin/data-requests'), {
+        schema: z.array(AdminDataRequestDtoSchema),
+        query: {
+          type: query?.type,
+          status: query?.status,
+          openOnly: query?.openOnly === undefined ? undefined : String(query.openOnly),
+        },
+      }),
+
+    startDataRequestReview: (requestId: string) =>
+      client.post(prefixed(`/admin/data-requests/${requestId}/start-review`), undefined, {
+        schema: AdminDataRequestDtoSchema,
+      }),
+
+    resolveDataRequest: (
+      requestId: string,
+      outcome: 'complete' | 'reject' | 'erase',
+      body: ResolveDataRequest,
+    ) =>
+      client.post(prefixed(`/admin/data-requests/${requestId}/${outcome}`), body, {
+        schema: AdminDataRequestDtoSchema,
+      }),
+
     viewCandidateProfile: (userId: string, body: ViewCandidateRequest) =>
       client.post(prefixed(`/admin/students/${userId}/profile`), body, {
         schema: CandidateBriefDtoSchema,
@@ -1323,15 +1380,29 @@ export function onboardingApi(client: SmartApiClient) {
         schema: PlatformAdminDtoSchema,
       }),
 
-    createBatch: (body: { name: string; code?: string }) =>
+    createBatch: (body: CreateBatchRequest) =>
       client.post(prefixed('/tpo/batches'), body, { schema: BatchDtoSchema }),
 
-    listBatches: () => client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema) }),
+    listBatches: (query?: ListBatchesQuery) =>
+      client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema), query }),
+
+    /** S6-VV-112 — the institution's campuses; archived ones only when asked for. */
+    listCampuses: (query?: { includeArchived?: boolean }) =>
+      client.get(prefixed('/tpo/campuses'), {
+        schema: z.array(CampusDtoSchema),
+        query: query?.includeArchived ? { includeArchived: 'true' } : undefined,
+      }),
+
+    createCampus: (body: CreateCampusRequest) =>
+      client.post(prefixed('/tpo/campuses'), body, { schema: CampusDtoSchema }),
+
+    updateCampus: (campusId: string, body: UpdateCampusRequest) =>
+      client.patch(prefixed(`/tpo/campuses/${campusId}`), body, { schema: CampusDtoSchema }),
 
     getBatch: (batchId: string) =>
       client.get(prefixed(`/tpo/batches/${batchId}`), { schema: BatchDtoSchema }),
 
-    updateBatch: (batchId: string, body: { name?: string; code?: string | null }) =>
+    updateBatch: (batchId: string, body: UpdateBatchRequest) =>
       client.patch(prefixed(`/tpo/batches/${batchId}`), body, { schema: BatchDtoSchema }),
 
     addBatchMember: (

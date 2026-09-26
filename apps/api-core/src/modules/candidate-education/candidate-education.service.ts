@@ -18,6 +18,7 @@ import {
 import { Prisma } from '../../generated/prisma/index.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { assertDataUriClean } from '../../platform/storage/file-scanner.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 
 export function isEducationEligible(education: { status: string }): boolean {
@@ -217,6 +218,7 @@ export class CandidateEducationService {
       });
     }
 
+    await assertDataUriClean(parsed.data.fileUrl, parsed.data.fileName);
     const doc = await this.prisma.candidateEducationDocument.create({
       data: {
         educationId,
