@@ -718,6 +718,21 @@ export const SHORTLIST_EXPORT_FORMATS = ['CSV', 'PDF', 'XLSX'] as const;
 export const ShortlistExportFormatSchema = z.enum(SHORTLIST_EXPORT_FORMATS);
 export type ShortlistExportFormat = z.infer<typeof ShortlistExportFormatSchema>;
 
+export const ListTpoShortlistQuerySchema = z.object({
+  openingId: UuidSchema.optional(),
+  driveId: UuidSchema.optional(),
+  minScore: z.coerce.number().min(0).max(1).optional(),
+  trackCode: TrackCodeSchema.optional(),
+});
+export type ListTpoShortlistQuery = z.infer<typeof ListTpoShortlistQuerySchema>;
+
+export const ExportTpoShortlistQuerySchema = z.object({
+  openingId: UuidSchema.optional(),
+  driveId: UuidSchema.optional(),
+  format: ShortlistExportFormatSchema.default('CSV'),
+});
+export type ExportTpoShortlistQuery = z.infer<typeof ExportTpoShortlistQuerySchema>;
+
 export const CohortReadinessRowSchema = z.object({
   trackCode: TrackCodeSchema,
   trackName: z.string(),
