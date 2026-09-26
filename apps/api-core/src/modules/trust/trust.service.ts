@@ -11,7 +11,7 @@ import {
   TrustReportStatus,
 } from '../../generated/prisma/index.js';
 import type { TrustReportCategory } from '../../generated/prisma/index.js';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { SCORE_RECALCULATION_QUEUE } from '../../platform/queue/queue.names.js';
 import type {
@@ -30,7 +30,7 @@ export class TrustService {
   private readonly logger = new Logger(TrustService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @InjectQueue(SCORE_RECALCULATION_QUEUE) private readonly scoreRecalculationQueue: Queue,
   ) {}

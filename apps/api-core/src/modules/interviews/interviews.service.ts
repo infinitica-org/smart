@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,11 +13,11 @@ import type {
   InterviewSlotDto,
   SubmitScorecardDto,
 } from '@smart/contracts';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 @Injectable()
 export class InterviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   // In-memory slot & scorecard stores (stubbed with Prisma integration hooks for production DB)
   private readonly slotsStore = new Map<string, InterviewSlotDto>();

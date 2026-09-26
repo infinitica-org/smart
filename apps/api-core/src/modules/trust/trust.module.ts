@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuditModule } from '../../platform/audit/audit.module.js';
 import { QueueModule } from '../../platform/queue/queue.module.js';
 import { PublicProfileModule } from '../public-profile/public-profile.module.js';
@@ -10,7 +10,8 @@ import { TrustService } from './trust.service.js';
 import { ScoreRecalculationProcessor } from './score-recalculation.processor.js';
 
 @Module({
-  imports: [QueueModule, AuditModule, PublicProfileModule],
+  // PublicProfileModule imports this module back, so both sides must be forwardRef'd.
+  imports: [QueueModule, AuditModule, forwardRef(() => PublicProfileModule)],
   controllers: [
     TrustController,
     TrustAppealController,
