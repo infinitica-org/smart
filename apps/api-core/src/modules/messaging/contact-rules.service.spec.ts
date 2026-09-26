@@ -106,6 +106,22 @@ describe('ContactRulesService (Th6-423/427/429)', () => {
     });
   });
 
+  describe('advisor campus scope (Th6-442)', () => {
+    it('limits an advisor with a campus label to that campus', async () => {
+      const northAdvisor = user('a2', 'PLACEMENT_STAFF', {
+        institutionId: INSTITUTION,
+        groupLabel: 'North',
+      });
+      const north = user('s3', 'STUDENT', { institutionId: INSTITUTION, groupLabel: 'North' });
+      const south = user('s4', 'STUDENT', { institutionId: INSTITUTION, groupLabel: 'South' });
+      expect((await rules.canStart(northAdvisor, north)).allowed).toBe(true);
+      expect(await rules.canStart(northAdvisor, south)).toMatchObject({
+        allowed: false,
+        reasonCode: 'ADVISOR_OUT_OF_SCOPE',
+      });
+    });
+  });
+
   describe('blocks (Th6-427)', () => {
     it('refuses both directions with the same generic message', async () => {
       blocked = true;
